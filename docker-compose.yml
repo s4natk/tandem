@@ -1,0 +1,93 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Local development stack.
+# Production AWS equivalents:
+#   postgres -> RDS for PostgreSQL
+#   redis    -> ElastiCache (Redis OSS / Valkey)
+#   server   -> ECS Fargate (with this Dockerfile) behind an ALB
+#   web      -> S3 + CloudFront (or run nginx container behind ALB)
+# ---------------------------------------------------------------------------
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: collab-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: collab
+      POSTGRES_PASSWORD: collab
+      POSTGRES_DB: collab
+    ports:
+      - "5432:5432"
+    volumes:
+      - collab_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collab -d collab"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: collab-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - collab_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # The application services below are optional for local dev (you'd usually
+  # `npm run dev` outside docker for hot reload). They exist so `docker compose
+  # up --profile app` mirrors the production deployment shape.
+  server:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    container_name: collab-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgresql://collab:collab@postgres:5432/collab?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: change-me-access-secret-please-use-32+chars
+      JWT_REFRESH_SECRET: change-me-refresh-secret-please-use-32+chars
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 30d
+      CORS_ORIGIN: http://localhost:8080
+      SOCKET_IO_REDIS_ADAPTER: "true"
+      LOG_LEVEL: info
+    ports:
+      - "4000:4000"
+
+  web:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:4000
+        VITE_WS_URL: http://localhost:4000
+    container_name: collab-web
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "8080:80"
+
+volumes:
+  collab_pg_data:
+  collab_redis_data:

@@ -1,0 +1,209 @@
+// Prisma schema for realtime-collab-app
+// Postgres on local docker-compose; Amazon RDS in production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  avatarColor   String   @default("#6366f1")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspaces        Workspace[]      @relation("WorkspaceOwner")
+  memberships       WorkspaceMember[]
+  roomMemberships   RoomMember[]
+  refreshTokens     RefreshToken[]
+  cardsCreated      Card[]           @relation("CardCreatedBy")
+  cardsAssigned     Card[]           @relation("CardAssignee")
+  activities        Activity[]
+  attachments       Attachment[]
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  // Hashed token (we never store the raw refresh token).
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  userAgent String?
+  ip        String?
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Workspaces & Rooms
+// ---------------------------------------------------------------------------
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner     User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   WorkspaceMember[]
+  rooms     Room[]
+
+  @@index([ownerId])
+}
+
+model WorkspaceMember {
+  id          String         @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        MembershipRole @default(EDITOR)
+  createdAt   DateTime       @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  // Short, human-shareable join code (unique across system).
+  code        String   @unique
+  // Monotonic revision counter for the board state, used as a coarse
+  // optimistic-concurrency token for full-board snapshots.
+  revision    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members     RoomMember[]
+  columns     Column[]
+  activities  Activity[]
+  attachments Attachment[]
+
+  @@index([workspaceId])
+}
+
+model RoomMember {
+  id        String         @id @default(cuid())
+  roomId    String
+  userId    String
+  role      MembershipRole @default(EDITOR)
+  createdAt DateTime       @default(now())
+
+  room      Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
+enum MembershipRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+// ---------------------------------------------------------------------------
+// Board state (kanban columns + cards)
+// ---------------------------------------------------------------------------
+
+model Column {
+  id        String   @id @default(cuid())
+  roomId    String
+  title     String
+  // Sparse position (1024, 2048, 3072...) so we can insert between siblings
+  // without renumbering every row on every move.
+  position  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room      Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  cards     Card[]
+
+  @@index([roomId, position])
+}
+
+model Card {
+  id          String   @id @default(cuid())
+  columnId    String
+  title       String
+  description String?
+  position    Float
+  // Per-card version used as the OCC token for card updates and moves.
+  version     Int      @default(0)
+  createdById String
+  assigneeId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  column      Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  createdBy   User   @relation("CardCreatedBy", fields: [createdById], references: [id])
+  assignee    User?  @relation("CardAssignee", fields: [assigneeId], references: [id])
+  attachments Attachment[]
+
+  @@index([columnId, position])
+}
+
+// ---------------------------------------------------------------------------
+// Activity feed (append-only)
+// ---------------------------------------------------------------------------
+
+model Activity {
+  id        String   @id @default(cuid())
+  roomId    String
+  actorId   String
+  kind      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  room      Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  actor     User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Attachments (optional - uses AWS S3 in production)
+// ---------------------------------------------------------------------------
+
+model Attachment {
+  id          String   @id @default(cuid())
+  roomId      String
+  cardId      String?
+  uploaderId  String
+  s3Key       String
+  filename    String
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+
+  room        Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  card        Card? @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  uploader    User  @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([cardId])
+}

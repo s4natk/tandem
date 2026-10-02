@@ -8,10 +8,16 @@ import { useBoardActions } from "@/realtime/useBoardActions";
 interface Props {
   roomId: string;
   cardId: string | null;
+  readOnly?: boolean;
   onClose: () => void;
 }
 
-export function CardDetailModal({ roomId, cardId, onClose }: Props): JSX.Element {
+export function CardDetailModal({
+  roomId,
+  cardId,
+  readOnly = false,
+  onClose,
+}: Props): JSX.Element {
   const card = useBoardStore((s) => (cardId ? s.cards[cardId] ?? null : null));
   const { updateCard, deleteCard, setLocalActiveCard } = useBoardActions(roomId);
 
@@ -34,6 +40,7 @@ export function CardDetailModal({ roomId, cardId, onClose }: Props): JSX.Element
       ) : (
         <CardEditor
           card={card}
+          readOnly={readOnly}
           onSubmit={async (patch) => {
             await updateCard(card.id, { ...patch, version: card.version });
             onClose();
@@ -52,10 +59,12 @@ export function CardDetailModal({ roomId, cardId, onClose }: Props): JSX.Element
 
 function CardEditor({
   card,
+  readOnly,
   onSubmit,
   onDelete,
 }: {
   card: BoardCard;
+  readOnly: boolean;
   onSubmit: (patch: { title?: string; description?: string | null }) => Promise<void>;
   onDelete: () => Promise<void>;
 }): JSX.Element {
@@ -95,6 +104,7 @@ function CardEditor({
           onChange={(e) => setTitle(e.target.value)}
           required
           maxLength={200}
+          readOnly={readOnly}
         />
       </div>
       <div>
@@ -104,20 +114,27 @@ function CardEditor({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={4000}
+          readOnly={readOnly}
         />
       </div>
 
       <div className="flex items-center justify-between">
-        <button type="button" onClick={onDelete} className="btn-danger px-3 py-1.5 text-sm">
-          Delete card
-        </button>
+        {readOnly ? (
+          <span className="text-xs font-medium text-slate-500">View only</span>
+        ) : (
+          <button type="button" onClick={onDelete} className="btn-danger px-3 py-1.5 text-sm">
+            Delete card
+          </button>
+        )}
         <div className="text-xs text-slate-500">
           v{card.version} · updated{" "}
           {new Date(card.updatedAt).toLocaleString()}
         </div>
-        <button type="submit" disabled={saving} className="btn-primary">
-          {saving ? <Spinner size="sm" className="text-white" /> : "Save"}
-        </button>
+        {!readOnly && (
+          <button type="submit" disabled={saving} className="btn-primary">
+            {saving ? <Spinner size="sm" className="text-white" /> : "Save"}
+          </button>
+        )}
       </div>
     </form>
   );

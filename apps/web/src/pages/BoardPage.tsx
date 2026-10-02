@@ -22,6 +22,7 @@ import { CardDetailModal } from "@/components/board/CardDetailModal";
 import { CardItem } from "@/components/board/Card";
 import { ColumnView } from "@/components/board/Column";
 import { PresenceBar } from "@/components/board/PresenceBar";
+import { RoomMembers } from "@/components/board/RoomMembers";
 import { useBoardStore } from "@/store/board";
 import { useRoomConnection } from "@/realtime/useRoomConnection";
 import { useBoardActions } from "@/realtime/useBoardActions";
@@ -54,6 +55,8 @@ export function BoardPage(): JSX.Element {
   const [openCardId, setOpenCardId] = useState<string | null>(null);
 
   const actions = useBoardActions(id);
+  const canEdit =
+    roomQuery.data?.room.role === "OWNER" || roomQuery.data?.room.role === "EDITOR";
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -62,15 +65,17 @@ export function BoardPage(): JSX.Element {
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
+      if (!canEdit) return;
       const id = String(event.active.id);
       if (cardsMap[id]) setDragging(id);
     },
-    [cardsMap, setDragging],
+    [canEdit, cardsMap, setDragging],
   );
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       setDragging(null);
+      if (!canEdit) return;
       const { active, over } = event;
       if (!over) return;
       const activeId = String(active.id);
@@ -110,7 +115,7 @@ export function BoardPage(): JSX.Element {
         version: card.version,
       });
     },
-    [actions, cardsByColumn, cardsMap, setDragging],
+    [actions, canEdit, cardsByColumn, cardsMap, setDragging],
   );
 
   const handleAddCard = useCallback(
@@ -155,7 +160,14 @@ export function BoardPage(): JSX.Element {
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Room
           </div>
-          <h1 className="truncate text-lg font-semibold tracking-tight">{room.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-lg font-semibold tracking-tight">{room.name}</h1>
+            {!canEdit && (
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                View only
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <button
@@ -204,6 +216,7 @@ export function BoardPage(): JSX.Element {
                         key={colId}
                         column={col}
                         cards={cards}
+                        readOnly={!canEdit}
                         onAddCard={handleAddCard}
                         onRenameColumn={handleRenameColumn}
                         onDeleteColumn={handleDeleteColumn}
@@ -213,6 +226,7 @@ export function BoardPage(): JSX.Element {
                   })}
                 </SortableContext>
 
+                {canEdit && (
                 <div className="flex h-min w-72 shrink-0 flex-col gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-white/30 p-3 text-sm">
                   {adding ? (
                     <form
@@ -259,6 +273,7 @@ export function BoardPage(): JSX.Element {
                     </button>
                   )}
                 </div>
+                )}
               </div>
 
               <DragOverlay>
@@ -275,13 +290,17 @@ export function BoardPage(): JSX.Element {
         </div>
 
         <aside className="flex h-full min-h-0 flex-col border-l border-slate-200 bg-white">
-          <ActivityFeed items={activity} />
+          <RoomMembers roomId={id} canManage={room.role === "OWNER"} />
+          <div className="min-h-0 flex-1">
+            <ActivityFeed items={activity} />
+          </div>
         </aside>
       </div>
 
       <CardDetailModal
         roomId={id}
         cardId={openCardId}
+        readOnly={!canEdit}
         onClose={() => setOpenCardId(null)}
       />
     </div>

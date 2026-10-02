@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { UnauthorizedError, NotFoundError } from "../../errors/index.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { ensureRoomMember } from "../rooms/rooms.service.js";
+import { ensureRoomEditor, ensureRoomMember } from "../rooms/rooms.service.js";
 import {
   createDownloadUrl,
   createUploadUrl,
@@ -37,7 +37,7 @@ export async function registerAttachmentRoutes(app: FastifyInstance): Promise<vo
   app.post("/attachments/presign", async (request, reply) => {
     if (!request.user) throw new UnauthorizedError();
     const body = presignSchema.parse(request.body);
-    await ensureRoomMember(request.user.id, body.roomId);
+    await ensureRoomEditor(request.user.id, body.roomId);
     const result = await createUploadUrl({
       roomId: body.roomId,
       uploaderId: request.user.id,
@@ -50,7 +50,7 @@ export async function registerAttachmentRoutes(app: FastifyInstance): Promise<vo
   app.post("/attachments/confirm", async (request, reply) => {
     if (!request.user) throw new UnauthorizedError();
     const body = confirmSchema.parse(request.body);
-    await ensureRoomMember(request.user.id, body.roomId);
+    await ensureRoomEditor(request.user.id, body.roomId);
     const created = await prisma.attachment.create({
       data: {
         roomId: body.roomId,

@@ -5,6 +5,7 @@ import type {
   LoginInput,
   PublicUser,
   Room,
+  MembershipRole,
   SignupInput,
   Workspace,
 } from "@collab/shared";
@@ -56,6 +57,10 @@ export const roomsApi = {
   get: (id: string) => api.get<{ room: RoomWithRole }>(`/api/rooms/${id}`),
   members: (id: string) =>
     api.get<{ members: RoomMemberView[] }>(`/api/rooms/${id}/members`),
+  updateMemberRole: (roomId: string, userId: string, role: MembershipRole) =>
+    api.patch<{ member: RoomMemberView }>(`/api/rooms/${roomId}/members/${userId}`, {
+      role,
+    }),
   joinByCode: (code: string) =>
     api.post<{ room: RoomWithRole }>("/api/rooms/join", { code }),
 };

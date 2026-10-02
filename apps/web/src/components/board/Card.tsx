@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { BoardCard } from "@collab/shared";
@@ -10,12 +10,14 @@ interface Props {
   card: BoardCard;
   onOpen: (cardId: string) => void;
   isOverlay?: boolean;
+  readOnly?: boolean;
 }
 
 export const CardItem = memo(function CardItem({
   card,
   onOpen,
   isOverlay = false,
+  readOnly = false,
 }: Props): JSX.Element {
   const {
     attributes,
@@ -24,7 +26,11 @@ export const CardItem = memo(function CardItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: card.id, data: { type: "card", card } });
+  } = useSortable({
+    id: card.id,
+    data: { type: "card", card },
+    disabled: readOnly,
+  });
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -37,10 +43,11 @@ export const CardItem = memo(function CardItem({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
+      {...(readOnly ? {} : listeners)}
       onClick={() => onOpen(card.id)}
       className={cn(
-        "group relative cursor-pointer rounded-md border border-slate-200 bg-white p-3 shadow-card transition-shadow hover:shadow-elevated",
+        "group relative rounded-md border border-slate-200 bg-white p-3 shadow-card transition-shadow hover:shadow-elevated",
+        readOnly ? "cursor-pointer" : "cursor-grab",
         isOverlay && "shadow-elevated ring-2 ring-brand-400",
       )}
     >

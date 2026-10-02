@@ -83,6 +83,10 @@ export const roomSchema = z.object({
 export const membershipRoleSchema = z.enum(["OWNER", "EDITOR", "VIEWER"]);
 export type MembershipRole = z.infer<typeof membershipRoleSchema>;
 
+export const updateRoomMemberRoleSchema = z.object({
+  role: membershipRoleSchema,
+});
+
 // ---------------------------------------------------------------------------
 // Board state (columns + cards)
 // ---------------------------------------------------------------------------

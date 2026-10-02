@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 interface Props {
   column: BoardColumn;
   cards: BoardCard[];
+  readOnly?: boolean;
   onAddCard: (columnId: string, title: string) => void;
   onRenameColumn: (columnId: string, title: string) => void;
   onDeleteColumn: (columnId: string) => void;
@@ -17,6 +18,7 @@ interface Props {
 export function ColumnView({
   column,
   cards,
+  readOnly = false,
   onAddCard,
   onRenameColumn,
   onDeleteColumn,
@@ -60,6 +62,10 @@ export function ColumnView({
             }}
             className="input h-7 px-2 py-0 text-sm font-semibold"
           />
+        ) : readOnly ? (
+          <div className="flex-1 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
+            {column.title}
+          </div>
         ) : (
           <button
             onClick={() => setEditing(true)}
@@ -71,35 +77,38 @@ export function ColumnView({
         <span className="rounded-md bg-slate-200/80 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
           {cards.length}
         </span>
-        <button
-          onClick={() => {
-            if (
-              window.confirm(
-                `Delete column "${column.title}"? All cards in it will be removed.`,
-              )
-            ) {
-              onDeleteColumn(column.id);
-            }
-          }}
-          className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-rose-600"
-          title="Delete column"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6" />
-            <path d="M10 11v6M14 11v6" />
-          </svg>
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Delete column "${column.title}"? All cards in it will be removed.`,
+                )
+              ) {
+                onDeleteColumn(column.id);
+              }
+            }}
+            className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-rose-600"
+            title="Delete column"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+            </svg>
+          </button>
+        )}
       </header>
 
       <div className="scrollbar-thin flex-1 space-y-2 overflow-y-auto px-2 pb-2">
         <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {cards.map((card) => (
-            <CardItem key={card.id} card={card} onOpen={onOpenCard} />
+            <CardItem key={card.id} card={card} onOpen={onOpenCard} readOnly={readOnly} />
           ))}
         </SortableContext>
       </div>
 
+      {!readOnly && (
       <div className="border-t border-slate-200/80 p-2">
         {adding ? (
           <form
@@ -154,6 +163,7 @@ export function ColumnView({
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }

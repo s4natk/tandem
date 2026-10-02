@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import {
   createRoomSchema,
   joinRoomByCodeSchema,
+  updateRoomMemberRoleSchema,
 } from "@collab/shared";
 import { UnauthorizedError } from "../../errors/index.js";
 import { requireAuth } from "../../middleware/auth.js";
@@ -41,6 +42,19 @@ export async function registerRoomRoutes(app: FastifyInstance): Promise<void> {
     const { id } = request.params as { id: string };
     const members = await rooms.listRoomMembers(request.user.id, id);
     return reply.send({ members });
+  });
+
+  app.patch("/rooms/:id/members/:userId", async (request, reply) => {
+    if (!request.user) throw new UnauthorizedError();
+    const { id, userId } = request.params as { id: string; userId: string };
+    const body = updateRoomMemberRoleSchema.parse(request.body);
+    const member = await rooms.updateRoomMemberRole({
+      actorId: request.user.id,
+      roomId: id,
+      targetUserId: userId,
+      role: body.role,
+    });
+    return reply.send({ member });
   });
 
   app.post("/rooms/join", async (request, reply) => {

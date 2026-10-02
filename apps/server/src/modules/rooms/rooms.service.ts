@@ -7,6 +7,7 @@ import {
 import { prisma } from "../../db/prisma.js";
 import { generateRoomCode } from "../../utils/code.js";
 import { ensureWorkspaceMember } from "../workspaces/workspaces.service.js";
+import { assertRoomEditor } from "./permissions.js";
 
 function toRoom(r: {
   id: string;
@@ -96,6 +97,59 @@ export async function ensureRoomMember(
   });
   if (!member) throw new ForbiddenError("Not a member of this room");
   return { role: member.role };
+}
+
+export async function ensureRoomEditor(
+  userId: string,
+  roomId: string,
+): Promise<{ role: MembershipRole }> {
+  const member = await ensureRoomMember(userId, roomId);
+  assertRoomEditor(member.role);
+  return member;
+}
+
+export async function updateRoomMemberRole(args: {
+  actorId: string;
+  roomId: string;
+  targetUserId: string;
+  role: MembershipRole;
+}) {
+  const actor = await ensureRoomMember(args.actorId, args.roomId);
+  if (actor.role !== "OWNER") {
+    throw new ForbiddenError("Only the room owner can change member roles");
+  }
+
+  const target = await prisma.roomMember.findUnique({
+    where: { roomId_userId: { roomId: args.roomId, userId: args.targetUserId } },
+    include: {
+      user: { select: { id: true, name: true, email: true, avatarColor: true } },
+    },
+  });
+  if (!target) throw new NotFoundError("Member not found");
+
+  if (target.role === "OWNER" && args.role !== "OWNER") {
+    const ownerCount = await prisma.roomMember.count({
+      where: { roomId: args.roomId, role: "OWNER" },
+    });
+    if (ownerCount <= 1) {
+      throw new ForbiddenError("A room must keep at least one owner");
+    }
+  }
+
+  const updated = await prisma.roomMember.update({
+    where: { id: target.id },
+    data: { role: args.role },
+    include: {
+      user: { select: { id: true, name: true, email: true, avatarColor: true } },
+    },
+  });
+
+  return {
+    id: updated.id,
+    role: updated.role,
+    joinedAt: updated.createdAt.toISOString(),
+    user: updated.user,
+  };
 }
 
 export async function joinRoomByCode(userId: string, code: string) {

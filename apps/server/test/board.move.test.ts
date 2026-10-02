@@ -63,6 +63,7 @@ describe("board.moveCard", () => {
     vi.doMock("../src/db/prisma.js", () => ({ prisma: fakePrisma }));
     vi.doMock("../src/modules/rooms/rooms.service.js", () => ({
       ensureRoomMember: vi.fn().mockResolvedValue({ role: "EDITOR" }),
+      ensureRoomEditor: vi.fn().mockResolvedValue({ role: "EDITOR" }),
     }));
 
     const { moveCard } = await import("../src/modules/board/board.service.js");
@@ -143,6 +144,7 @@ describe("board.moveCard", () => {
     vi.doMock("../src/db/prisma.js", () => ({ prisma: fakePrisma }));
     vi.doMock("../src/modules/rooms/rooms.service.js", () => ({
       ensureRoomMember: vi.fn().mockResolvedValue({ role: "EDITOR" }),
+      ensureRoomEditor: vi.fn().mockResolvedValue({ role: "EDITOR" }),
     }));
 
     const { moveCard } = await import("../src/modules/board/board.service.js");

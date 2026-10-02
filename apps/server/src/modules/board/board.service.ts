@@ -21,7 +21,7 @@ import {
   positionForAppend,
 } from "../../utils/position.js";
 import { appendActivity } from "../activity/activity.service.js";
-import { ensureRoomMember } from "../rooms/rooms.service.js";
+import { ensureRoomEditor, ensureRoomMember } from "../rooms/rooms.service.js";
 
 // ---------------------------------------------------------------------------
 // Mappers
@@ -154,7 +154,7 @@ export async function createColumn(args: {
   roomId: string;
   input: CreateColumnInput;
 }): Promise<{ column: BoardColumn; activity: Activity; revision: number }> {
-  await ensureRoomMember(args.userId, args.roomId);
+  await ensureRoomEditor(args.userId, args.roomId);
 
   return prisma.$transaction(async (tx) => {
     const last = await tx.column.findFirst({
@@ -187,7 +187,7 @@ export async function updateColumn(args: {
   columnId: string;
   input: UpdateColumnInput;
 }): Promise<{ column: BoardColumn; activity: Activity; revision: number }> {
-  await ensureRoomMember(args.userId, args.roomId);
+  await ensureRoomEditor(args.userId, args.roomId);
 
   return prisma.$transaction(async (tx) => {
     const existing = await ensureColumnInRoom(tx, args.roomId, args.columnId);
@@ -217,7 +217,7 @@ export async function deleteColumn(args: {
   roomId: string;
   columnId: string;
 }): Promise<{ activity: Activity; revision: number }> {
-  await ensureRoomMember(args.userId, args.roomId);
+  await ensureRoomEditor(args.userId, args.roomId);
 
   return prisma.$transaction(async (tx) => {
     const existing = await ensureColumnInRoom(tx, args.roomId, args.columnId);
@@ -245,7 +245,7 @@ export async function createCard(args: {
   roomId: string;
   input: CreateCardInput;
 }): Promise<{ card: BoardCard; activity: Activity; revision: number }> {
-  await ensureRoomMember(args.userId, args.roomId);
+  await ensureRoomEditor(args.userId, args.roomId);
 
   return prisma.$transaction(async (tx) => {
     await ensureColumnInRoom(tx, args.roomId, args.input.columnId);
@@ -288,7 +288,7 @@ export async function updateCard(args: {
   cardId: string;
   input: UpdateCardInput;
 }): Promise<{ card: BoardCard; activity: Activity; revision: number }> {
-  await ensureRoomMember(args.userId, args.roomId);
+  await ensureRoomEditor(args.userId, args.roomId);
 
   return prisma.$transaction(async (tx) => {
     const existing = await ensureCardInRoom(tx, args.roomId, args.cardId);
@@ -335,7 +335,7 @@ export async function moveCard(args: {
   roomId: string;
   input: MoveCardInput;
 }): Promise<{ card: BoardCard; activity: Activity; revision: number }> {
-  await ensureRoomMember(args.userId, args.roomId);
+  await ensureRoomEditor(args.userId, args.roomId);
 
   return prisma.$transaction(async (tx) => {
     const existing = await ensureCardInRoom(tx, args.roomId, args.input.cardId);
@@ -404,7 +404,7 @@ export async function deleteCard(args: {
   roomId: string;
   cardId: string;
 }): Promise<{ activity: Activity; revision: number }> {
-  await ensureRoomMember(args.userId, args.roomId);
+  await ensureRoomEditor(args.userId, args.roomId);
 
   return prisma.$transaction(async (tx) => {
     const existing = await ensureCardInRoom(tx, args.roomId, args.cardId);

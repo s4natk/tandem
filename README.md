@@ -267,9 +267,6 @@ These are scoped-out for the MVP but the architecture already supports them:
 - **Cursor-level real-time editing** of card descriptions (CRDT or OT). The
   event contract already exposes `typing` and `active card` indicators; a
   Yjs document attached to the card would slot in cleanly.
-- **Per-room role enforcement on writes** (the schema has `VIEWER` but
-  the WS layer treats every member as an editor; a single role check in
-  `board.service.ts` is all it takes).
 - **Pagination + server-side filtering** for the activity feed.
 - **Invitation links with expiry** and email delivery (SES).
 - **Soft delete + restore** for cards.

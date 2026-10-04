@@ -58,7 +58,11 @@ function describe(a: Activity): { description: string; color: string } {
   const title = (a.payload?.title as string | undefined) ?? "(untitled)";
   switch (a.kind) {
     case "ROOM_CREATED":
-      return { description: "created the room", color: "bg-slate-400" };
+      return {
+        description:
+          title === "(untitled)" ? "created the room" : `created the room "${title}"`,
+        color: "bg-slate-400",
+      };
     case "MEMBER_JOINED":
       return { description: "joined the room", color: "bg-emerald-500" };
     case "COLUMN_CREATED":

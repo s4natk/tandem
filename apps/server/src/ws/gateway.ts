@@ -46,10 +46,8 @@ import * as boardService from "../modules/board/board.service.js";
 import { listActivity } from "../modules/activity/activity.service.js";
 import { ensureRoomMember } from "../modules/rooms/rooms.service.js";
 import { presenceStore } from "./presence.js";
+import { socketRoomId } from "./publish.js";
 import type { AuthedSocket } from "./types.js";
-
-const SOCKET_ROOM_PREFIX = "room:";
-const socketRoomId = (roomId: string) => `${SOCKET_ROOM_PREFIX}${roomId}`;
 
 /**
  * Build a Socket.IO server bound to the given HTTP server.

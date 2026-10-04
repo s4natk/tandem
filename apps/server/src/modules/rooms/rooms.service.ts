@@ -6,7 +6,9 @@ import {
 } from "../../errors/index.js";
 import { prisma } from "../../db/prisma.js";
 import { generateRoomCode } from "../../utils/code.js";
+import { appendActivity } from "../activity/activity.service.js";
 import { ensureWorkspaceMember } from "../workspaces/workspaces.service.js";
+import { publishActivity } from "../../ws/publish.js";
 import { assertRoomEditor } from "./permissions.js";
 
 function toRoom(r: {
@@ -35,7 +37,7 @@ export async function createRoom(args: {
 }) {
   await ensureWorkspaceMember(args.userId, args.workspaceId);
 
-  return prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     // Retry a couple of times if we hit a code collision.
     let lastErr: unknown;
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -59,13 +61,25 @@ export async function createRoom(args: {
             { roomId: room.id, title: "Done", position: 3072 },
           ],
         });
-        return toRoom(room);
+        const activity = await appendActivity(
+          {
+            roomId: room.id,
+            actorId: args.userId,
+            kind: "ROOM_CREATED",
+            payload: { title: room.name },
+          },
+          tx,
+        );
+        return { room: toRoom(room), activity };
       } catch (err) {
         lastErr = err;
       }
     }
     throw new ConflictError("Could not generate a unique room code", lastErr);
   });
+
+  publishActivity(created.room.id, created.activity);
+  return created.room;
 }
 
 export async function listRoomsForUser(userId: string, workspaceId: string) {
@@ -166,13 +180,33 @@ export async function joinRoomByCode(userId: string, code: string) {
     });
   });
 
-  await prisma.roomMember.upsert({
-    where: { roomId_userId: { roomId: room.id, userId } },
-    update: {},
-    create: { roomId: room.id, userId, role: "EDITOR" },
-  });
+  try {
+    await prisma.roomMember.create({
+      data: { roomId: room.id, userId, role: "EDITOR" },
+    });
+  } catch (err) {
+    // Already a member. Re-joining with the same code should not log again.
+    if (isUniqueConstraint(err)) return toRoom(room);
+    throw err;
+  }
 
+  const activity = await appendActivity({
+    roomId: room.id,
+    actorId: userId,
+    kind: "MEMBER_JOINED",
+    payload: {},
+  });
+  publishActivity(room.id, activity);
   return toRoom(room);
+}
+
+function isUniqueConstraint(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: string }).code === "P2002"
+  );
 }
 
 export async function listRoomMembers(userId: string, roomId: string) {

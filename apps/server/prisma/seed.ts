@@ -37,6 +37,14 @@ async function main(): Promise<void> {
   await prisma.roomMember.create({
     data: { roomId: room.id, userId: user.id, role: "OWNER" },
   });
+  await prisma.activity.create({
+    data: {
+      roomId: room.id,
+      actorId: user.id,
+      kind: "ROOM_CREATED",
+      payload: { title: room.name },
+    },
+  });
   const [todo, inprog, done] = await Promise.all([
     prisma.column.create({
       data: { roomId: room.id, title: "To Do", position: 1024 },

@@ -4,10 +4,12 @@ import { disconnectPrisma } from "./db/prisma.js";
 import { disconnectRedis } from "./redis/client.js";
 import { buildServer } from "./server.js";
 import { attachSocketGateway } from "./ws/gateway.js";
+import { bindSocketServer } from "./ws/publish.js";
 
 async function main(): Promise<void> {
   const app = await buildServer();
   const io = attachSocketGateway(app.server);
+  bindSocketServer(io);
 
   await app.listen({ port: env.PORT, host: env.HOST });
   logger.info(`server listening on http://${env.HOST}:${env.PORT}`);

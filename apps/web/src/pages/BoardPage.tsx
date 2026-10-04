@@ -53,6 +53,7 @@ export function BoardPage(): JSX.Element {
   const [adding, setAdding] = useState(false);
   const [newColTitle, setNewColTitle] = useState("");
   const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
 
   const actions = useBoardActions(id);
   const canEdit =
@@ -66,6 +67,11 @@ export function BoardPage(): JSX.Element {
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       if (!canEdit) return;
+      const data = event.active.data.current as { type?: string; columnId?: string } | undefined;
+      if (data?.type === "column" && data.columnId) {
+        setDraggingColumnId(data.columnId);
+        return;
+      }
       const id = String(event.active.id);
       if (cardsMap[id]) setDragging(id);
     },
@@ -75,9 +81,26 @@ export function BoardPage(): JSX.Element {
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       setDragging(null);
+      setDraggingColumnId(null);
       if (!canEdit) return;
       const { active, over } = event;
       if (!over) return;
+
+      const activeData = active.data.current as { type?: string; columnId?: string } | undefined;
+      if (activeData?.type === "column" && activeData.columnId) {
+        const overData = over.data.current as { type?: string; columnId?: string } | undefined;
+        const overColumnId =
+          overData?.type === "column"
+            ? overData.columnId
+            : cardsMap[String(over.id)]?.columnId;
+        if (!overColumnId) return;
+        const fromIndex = columnOrder.indexOf(activeData.columnId);
+        const toIndex = columnOrder.indexOf(overColumnId);
+        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+        await actions.moveColumn(activeData.columnId, toIndex);
+        return;
+      }
+
       const activeId = String(active.id);
       const card = cardsMap[activeId];
       if (!card) return;
@@ -115,7 +138,7 @@ export function BoardPage(): JSX.Element {
         version: card.version,
       });
     },
-    [actions, canEdit, cardsByColumn, cardsMap, setDragging],
+    [actions, canEdit, cardsByColumn, cardsMap, columnOrder, setDragging],
   );
 
   const handleAddCard = useCallback(
@@ -203,7 +226,10 @@ export function BoardPage(): JSX.Element {
               onDragEnd={handleDragEnd}
             >
               <div className="scrollbar-thin flex h-full gap-4 overflow-x-auto overflow-y-hidden p-4">
-                <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                <SortableContext
+                  items={columnOrder.map((colId) => `column:${colId}`)}
+                  strategy={horizontalListSortingStrategy}
+                >
                   {columnOrder.map((colId) => {
                     const col = columns[colId];
                     if (!col) return null;
@@ -283,6 +309,10 @@ export function BoardPage(): JSX.Element {
                     onOpen={() => undefined}
                     isOverlay
                   />
+                ) : draggingColumnId && columns[draggingColumnId] ? (
+                  <div className="w-72 rounded-lg bg-slate-100 px-3 py-3 text-sm font-semibold uppercase tracking-wider text-slate-600 shadow-elevated">
+                    {columns[draggingColumnId].title}
+                  </div>
                 ) : null}
               </DragOverlay>
             </DndContext>

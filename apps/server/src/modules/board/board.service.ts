@@ -17,6 +17,7 @@ import {
   VersionConflictError,
 } from "../../errors/index.js";
 import {
+  positionAtIndex,
   positionBetween,
   positionForAppend,
 } from "../../utils/position.js";
@@ -191,19 +192,30 @@ export async function updateColumn(args: {
 
   return prisma.$transaction(async (tx) => {
     const existing = await ensureColumnInRoom(tx, args.roomId, args.columnId);
+    let position = args.input.position ?? existing.position;
+    if (args.input.toIndex !== undefined) {
+      const siblings = await tx.column.findMany({
+        where: { roomId: args.roomId, NOT: { id: args.columnId } },
+        orderBy: { position: "asc" },
+        select: { position: true },
+      });
+      position = positionAtIndex(
+        siblings.map((column) => column.position),
+        args.input.toIndex,
+      );
+    }
+    const title = args.input.title ?? existing.title;
     const column = await tx.column.update({
       where: { id: args.columnId },
-      data: {
-        title: args.input.title ?? existing.title,
-        position: args.input.position ?? existing.position,
-      },
+      data: { title, position },
     });
     const revision = await bumpRoomRevision(tx, args.roomId);
+    const moved = position !== existing.position && title === existing.title;
     const activity = await appendActivity(
       {
         roomId: args.roomId,
         actorId: args.userId,
-        kind: "COLUMN_UPDATED",
+        kind: moved ? "COLUMN_MOVED" : "COLUMN_UPDATED",
         payload: { columnId: column.id, title: column.title },
       },
       tx,

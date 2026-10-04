@@ -69,6 +69,8 @@ function describe(a: Activity): { description: string; color: string } {
       return { description: `added column "${title}"`, color: "bg-brand-500" };
     case "COLUMN_UPDATED":
       return { description: `renamed column to "${title}"`, color: "bg-brand-400" };
+    case "COLUMN_MOVED":
+      return { description: `moved column "${title}"`, color: "bg-blue-500" };
     case "COLUMN_DELETED":
       return { description: `deleted column "${title}"`, color: "bg-rose-500" };
     case "CARD_CREATED":

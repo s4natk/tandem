@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import type { BoardCard, BoardColumn } from "@collab/shared";
 import { CardItem } from "./Card";
 import { cn } from "@/lib/cn";
@@ -29,7 +30,19 @@ export function ColumnView({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(column.title);
 
-  const { setNodeRef, isOver } = useDroppable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: `column:${column.id}`,
+    data: { type: "column", columnId: column.id },
+    disabled: readOnly,
+  });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: column.id,
     data: { type: "column", columnId: column.id },
   });
@@ -37,12 +50,35 @@ export function ColumnView({
   return (
     <div
       ref={setNodeRef}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.45 : 1,
+      }}
       className={cn(
         "flex h-full w-72 shrink-0 flex-col rounded-lg bg-slate-100/80 backdrop-blur transition-colors",
         isOver && "bg-brand-100/60 ring-2 ring-brand-300",
       )}
     >
       <header className="flex items-center gap-2 px-3 pb-2 pt-3">
+        {!readOnly && (
+          <button
+            type="button"
+            className="cursor-grab rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+            aria-label={`Reorder ${column.title}`}
+            {...attributes}
+            {...listeners}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="9" cy="6" r="1.4" />
+              <circle cx="15" cy="6" r="1.4" />
+              <circle cx="9" cy="12" r="1.4" />
+              <circle cx="15" cy="12" r="1.4" />
+              <circle cx="9" cy="18" r="1.4" />
+              <circle cx="15" cy="18" r="1.4" />
+            </svg>
+          </button>
+        )}
         {editing ? (
           <input
             autoFocus
@@ -100,7 +136,7 @@ export function ColumnView({
         )}
       </header>
 
-      <div className="scrollbar-thin flex-1 space-y-2 overflow-y-auto px-2 pb-2">
+      <div ref={setDropRef} className="scrollbar-thin flex-1 space-y-2 overflow-y-auto px-2 pb-2">
         <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {cards.map((card) => (
             <CardItem key={card.id} card={card} onOpen={onOpenCard} readOnly={readOnly} />

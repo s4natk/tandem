@@ -133,6 +133,8 @@ export const createColumnSchema = z.object({
 export const updateColumnSchema = z.object({
   title: z.string().min(1).max(80).optional(),
   position: z.number().optional(),
+  // Index among the other columns. The server turns this into a sparse position.
+  toIndex: z.number().int().nonnegative().optional(),
 });
 
 export const createCardSchema = z.object({
@@ -166,6 +168,7 @@ export const activityKindSchema = z.enum([
   "MEMBER_JOINED",
   "COLUMN_CREATED",
   "COLUMN_UPDATED",
+  "COLUMN_MOVED",
   "COLUMN_DELETED",
   "CARD_CREATED",
   "CARD_UPDATED",

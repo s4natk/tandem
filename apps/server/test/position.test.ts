@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   POSITION_STEP,
   needsRebalance,
+  positionAtIndex,
   positionBetween,
   positionForAppend,
 } from "../src/utils/position.js";
@@ -26,6 +27,13 @@ describe("position", () => {
 
   it("uses the default step when both ends are null", () => {
     expect(positionBetween(null, null)).toBe(POSITION_STEP);
+  });
+
+  it("places an item at a target index among the other siblings", () => {
+    expect(positionAtIndex([], 0)).toBe(POSITION_STEP);
+    expect(positionAtIndex([1024, 3072], 0)).toBe(512);
+    expect(positionAtIndex([1024, 3072], 1)).toBe(2048);
+    expect(positionAtIndex([1024, 3072], 2)).toBe(3072 + POSITION_STEP);
   });
 
   it("flags rebalance when two siblings collapse close together", () => {

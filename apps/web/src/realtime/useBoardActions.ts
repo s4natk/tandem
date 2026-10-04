@@ -51,6 +51,14 @@ export function useBoardActions(roomId: string) {
     [roomId],
   );
 
+  const moveColumn = useCallback(
+    async (columnId: string, toIndex: number) => {
+      const payload: ColumnUpdatePayload = { roomId, columnId, toIndex };
+      await emit<BoardColumnEvent>(SocketEvents.BoardColumnUpdate, payload);
+    },
+    [roomId],
+  );
+
   const deleteColumn = useCallback(
     async (columnId: string) => {
       await emit(SocketEvents.BoardColumnDelete, { roomId, columnId });
@@ -132,6 +140,7 @@ export function useBoardActions(roomId: string) {
   return {
     createColumn,
     updateColumn,
+    moveColumn,
     deleteColumn,
     createCard,
     updateCard,

@@ -21,6 +21,14 @@ export function positionForAppend(lastPosition: number | null): number {
   return lastPosition + POSITION_STEP;
 }
 
+/** Position for inserting at `toIndex` among sibling positions, excluding the moved item. */
+export function positionAtIndex(siblingPositions: number[], toIndex: number): number {
+  const clamped = Math.max(0, Math.min(toIndex, siblingPositions.length));
+  const prev = clamped > 0 ? siblingPositions[clamped - 1] ?? null : null;
+  const next = clamped < siblingPositions.length ? siblingPositions[clamped] ?? null : null;
+  return positionBetween(prev, next);
+}
+
 export function positionBetween(prev: number | null, next: number | null): number {
   if (prev == null && next == null) return POSITION_STEP;
   if (prev == null && next != null) return next / 2;

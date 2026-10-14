@@ -10,6 +10,7 @@ import {
   type CardUpdatePayload,
   type ColumnCreatePayload,
   type ColumnUpdatePayload,
+  type PresenceTypingPayload,
 } from "@collab/shared";
 import toast from "react-hot-toast";
 import { useBoardStore } from "@/store/board";
@@ -126,6 +127,14 @@ export function useBoardActions(roomId: string) {
     [roomId],
   );
 
+  const setTyping = useCallback(
+    (cardId: string, typing: boolean) => {
+      const payload: PresenceTypingPayload = { roomId, cardId, typing };
+      getSocket().emit(SocketEvents.PresenceTyping, payload);
+    },
+    [roomId],
+  );
+
   const setLocalActiveCard = useCallback(
     (cardId: string | null) => {
       getSocket().emit(SocketEvents.PresenceActiveCard, { roomId, cardId });
@@ -146,6 +155,7 @@ export function useBoardActions(roomId: string) {
     updateCard,
     moveCard,
     deleteCard,
+    setTyping,
     setLocalActiveCard,
   };
 }

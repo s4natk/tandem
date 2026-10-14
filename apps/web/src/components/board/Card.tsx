@@ -1,20 +1,23 @@
-import { memo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { BoardCard } from "@collab/shared";
+import { roomsApi } from "@/api/endpoints";
 import { Avatar } from "@/components/ui/Avatar";
 import { useBoardStore } from "@/store/board";
 import { cn } from "@/lib/cn";
 
 interface Props {
   card: BoardCard;
+  roomId?: string;
   onOpen: (cardId: string) => void;
   isOverlay?: boolean;
   readOnly?: boolean;
 }
 
-export const CardItem = memo(function CardItem({
+export function CardItem({
   card,
+  roomId,
   onOpen,
   isOverlay = false,
   readOnly = false,
@@ -58,10 +61,20 @@ export const CardItem = memo(function CardItem({
       {card.description && (
         <p className="mt-1 line-clamp-2 text-xs text-slate-500">{card.description}</p>
       )}
-      {card.assigneeId && <AssigneeBadge userId={card.assigneeId} />}
+      <TypingLine cardId={card.id} />
+      {card.assigneeId && <AssigneeBadge roomId={roomId} userId={card.assigneeId} />}
     </div>
   );
-});
+}
+
+export function TypingLine({ cardId }: { cardId: string }): JSX.Element | null {
+  const typers = useBoardStore((s) => s.typingByCard[cardId] ?? []);
+  if (typers.length === 0) return null;
+  const names = typers.map((typer) => typer.name);
+  const label =
+    names.length === 1 ? `${names[0]} is typing…` : `${names.slice(0, 2).join(" and ")} are typing…`;
+  return <p className="mt-2 text-xs font-medium text-brand-600">{label}</p>;
+}
 
 function CardActivePresenceRing({ cardId }: { cardId: string }): JSX.Element | null {
   const presence = useBoardStore((s) => s.presence);
@@ -91,18 +104,28 @@ function Watcher({ name, color }: { name: string; color: string }): JSX.Element 
   );
 }
 
-function AssigneeBadge({ userId }: { userId: string }): JSX.Element {
+function AssigneeBadge({
+  roomId,
+  userId,
+}: {
+  roomId?: string;
+  userId: string;
+}): JSX.Element {
+  const membersQuery = useQuery({
+    queryKey: ["room-members", roomId],
+    queryFn: () => roomsApi.members(roomId ?? ""),
+    enabled: Boolean(roomId),
+  });
   const presence = useBoardStore((s) => s.presence);
-  const member = Object.values(presence).find((p) => p.userId === userId);
+  const member = membersQuery.data?.members.find((row) => row.user.id === userId)?.user;
+  const online = Object.values(presence).find((person) => person.userId === userId);
+  const name = member?.name ?? online?.name ?? "Assigned";
+  const color = member?.avatarColor ?? online?.avatarColor ?? "#94a3b8";
   return (
-    <div className="mt-2 flex justify-end">
-      <Avatar
-        name={member?.name ?? "?"}
-        color={member?.avatarColor ?? "#94a3b8"}
-        size="xs"
-      />
+    <div className="mt-2 flex items-center justify-end gap-1.5">
+      <span className="truncate text-xs text-slate-500">{name}</span>
+      <Avatar name={name} color={color} size="xs" />
     </div>
   );
 }
 
-CardItem.displayName = "CardItem";

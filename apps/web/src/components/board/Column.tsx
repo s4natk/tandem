@@ -139,7 +139,13 @@ export function ColumnView({
       <div ref={setDropRef} className="scrollbar-thin flex-1 space-y-2 overflow-y-auto px-2 pb-2">
         <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {cards.map((card) => (
-            <CardItem key={card.id} card={card} onOpen={onOpenCard} readOnly={readOnly} />
+            <CardItem
+              key={card.id}
+              card={card}
+              roomId={column.roomId}
+              onOpen={onOpenCard}
+              readOnly={readOnly}
+            />
           ))}
         </SortableContext>
       </div>

@@ -29,7 +29,8 @@
   step-by-step ECS/RDS/ElastiCache deployment guide in
   [`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md).
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design and
+[`docs/SHIP.md`](docs/SHIP.md) to publish the demo on Fly.io and Vercel.
 
 ---
 
@@ -142,8 +143,16 @@ The defaults match the docker-compose services so no edits are required.
 ### 4. Run the database migration + seed
 
 ```bash
-npm run prisma:migrate -- --name init
+npm run prisma:deploy -w @collab/server
 npm run prisma:seed -w @collab/server
+```
+
+If this database was created earlier with `prisma migrate dev` and has no
+migration history, mark the committed migration as already applied instead
+of running it again:
+
+```bash
+npx prisma migrate resolve --applied 20261014033000_init --schema apps/server/prisma/schema.prisma
 ```
 
 The seed creates `demo@collab.dev` / `demo-password` with one workspace,
@@ -257,6 +266,8 @@ design rationale.
 - [x] Strict environment validation (`zod`) that fails fast on missing config
 - [x] `.env.example` files at root, server, and web
 - [x] AWS deployment runbook ([`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md))
+- [x] Checked-in Prisma migration
+- [x] Fly.io and Vercel config for the public demo ([`docs/SHIP.md`](docs/SHIP.md))
 
 ---
 

@@ -65,6 +65,45 @@ export const roomsApi = {
     api.post<{ room: RoomWithRole }>("/api/rooms/join", { code }),
 };
 
+export interface AttachmentView {
+  id: string;
+  roomId: string;
+  cardId: string | null;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export const attachmentsApi = {
+  status: () => api.get<{ enabled: boolean }>("/api/attachments/status"),
+  list: (roomId: string, cardId: string) =>
+    api.get<{ attachments: AttachmentView[] }>(
+      `/api/attachments?roomId=${encodeURIComponent(roomId)}&cardId=${encodeURIComponent(cardId)}`,
+    ),
+  presign: (body: {
+    roomId: string;
+    cardId?: string;
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+  }) =>
+    api.post<{ url: string; key: string; expiresIn: number }>(
+      "/api/attachments/presign",
+      body,
+    ),
+  confirm: (body: {
+    roomId: string;
+    cardId?: string;
+    key: string;
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+  }) => api.post<{ attachment: { id: string } }>("/api/attachments/confirm", body),
+  download: (id: string) =>
+    api.get<{ url: string }>(`/api/attachments/${id}/download`),
+};
+
 export const boardApi = {
   snapshot: (roomId: string) =>
     api.get<{ snapshot: BoardSnapshot }>(`/api/rooms/${roomId}/board`),

@@ -69,6 +69,19 @@ export function LoginPage(): JSX.Element {
           {loading ? <Spinner size="sm" className="text-white" /> : "Sign in"}
         </button>
       </form>
+      <button
+        type="button"
+        className="btn-secondary mt-4 w-full"
+        onClick={() => {
+          setEmail("demo@collab.dev");
+          setPassword("demo-password");
+        }}
+      >
+        Use the demo account
+      </button>
+      <p className="mt-3 text-center text-xs text-slate-500">
+        demo@collab.dev · demo-password · room code demo1234
+      </p>
       <p className="mt-6 text-sm text-slate-600">
         Need an account?{" "}
         <Link to="/signup" className="font-medium text-brand-600 hover:underline">

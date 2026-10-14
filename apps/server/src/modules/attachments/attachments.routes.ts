@@ -18,6 +18,11 @@ const presignSchema = z.object({
   sizeBytes: z.number().int().positive().max(50 * 1024 * 1024), // 50 MiB cap
 });
 
+const listQuerySchema = z.object({
+  roomId: z.string().min(1),
+  cardId: z.string().min(1).optional(),
+});
+
 const confirmSchema = z.object({
   roomId: z.string().min(1),
   cardId: z.string().min(1).optional(),
@@ -32,6 +37,34 @@ export async function registerAttachmentRoutes(app: FastifyInstance): Promise<vo
 
   app.get("/attachments/status", async (_req, reply) => {
     return reply.send({ enabled: isS3Enabled() });
+  });
+
+  app.get("/attachments", async (request, reply) => {
+    if (!request.user) throw new UnauthorizedError();
+    const query = listQuerySchema.parse(request.query);
+    await ensureRoomMember(request.user.id, query.roomId);
+    const rows = await prisma.attachment.findMany({
+      where: {
+        roomId: query.roomId,
+        ...(query.cardId ? { cardId: query.cardId } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        roomId: true,
+        cardId: true,
+        filename: true,
+        mimeType: true,
+        sizeBytes: true,
+        createdAt: true,
+      },
+    });
+    return reply.send({
+      attachments: rows.map((row) => ({
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+      })),
+    });
   });
 
   app.post("/attachments/presign", async (request, reply) => {

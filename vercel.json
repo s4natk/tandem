@@ -1,0 +1,6 @@
+{
+  "installCommand": "npm install",
+  "buildCommand": "npm run build -w @collab/shared && npm run build -w @collab/web",
+  "outputDirectory": "apps/web/dist",
+  "framework": "vite"
+}

@@ -29,6 +29,7 @@ interface BoardState {
   activity: Activity[];
   // Cards transiently being moved by the user (drag-and-drop)
   draggingCardId: string | null;
+  typingByCard: Record<string, CardTyper[]>;
 
   hydrate: (snapshot: BoardSnapshot) => void;
   reset: () => void;
@@ -44,6 +45,19 @@ interface BoardState {
   removeCard: (cardId: string) => void;
 
   setDragging: (cardId: string | null) => void;
+  setTyping: (args: {
+    userId: string;
+    cardId: string;
+    name: string;
+    avatarColor: string;
+    typing: boolean;
+  }) => void;
+}
+
+export interface CardTyper {
+  userId: string;
+  name: string;
+  avatarColor: string;
 }
 
 const initial = {
@@ -58,6 +72,7 @@ const initial = {
   activeCardByUser: {} as Record<string, string | null>,
   activity: [] as Activity[],
   draggingCardId: null as string | null,
+  typingByCard: {} as Record<string, CardTyper[]>,
 };
 
 function sortColumns(columns: Record<string, BoardColumn>): string[] {
@@ -115,8 +130,10 @@ export const useBoardStore = create<BoardState>((set) => ({
 
   presenceLeft: (_userId, socketId) =>
     set((s) => {
-      const { [socketId]: _gone, ...rest } = s.presence;
-      return { presence: rest };
+      const gone = s.presence[socketId];
+      const { [socketId]: _removed, ...rest } = s.presence;
+      if (!gone) return { presence: rest };
+      return { presence: rest, typingByCard: withoutTyper(s.typingByCard, gone.userId) };
     }),
 
   setActiveCard: (userId, cardId) =>
@@ -185,7 +202,29 @@ export const useBoardStore = create<BoardState>((set) => ({
     }),
 
   setDragging: (cardId) => set({ draggingCardId: cardId }),
+
+  setTyping: ({ userId, cardId, name, avatarColor, typing }) =>
+    set((s) => {
+      const typingByCard = withoutTyper(s.typingByCard, userId);
+      if (typing) {
+        const typer: CardTyper = { userId, name, avatarColor };
+        typingByCard[cardId] = [...(typingByCard[cardId] ?? []), typer];
+      }
+      return { typingByCard };
+    }),
 }));
+
+function withoutTyper(
+  typingByCard: Record<string, CardTyper[]>,
+  userId: string,
+): Record<string, CardTyper[]> {
+  const next: Record<string, CardTyper[]> = {};
+  for (const [cardId, typers] of Object.entries(typingByCard)) {
+    const kept = typers.filter((typer) => typer.userId !== userId);
+    if (kept.length > 0) next[cardId] = kept;
+  }
+  return next;
+}
 
 function insertSortedById(
   ids: string[],

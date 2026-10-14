@@ -10,6 +10,7 @@ import {
   type PresenceJoinedEvent,
   type PresenceLeftEvent,
   type PresenceListEvent,
+  type PresenceTypingEvent,
   type RoomErrorEvent,
   type RoomSnapshotEvent,
 } from "@collab/shared";
@@ -69,6 +70,19 @@ export function useRoomConnection({ roomId }: Options): void {
       if (event.roomId !== roomId) return;
       useBoardStore.getState().setActiveCard(event.userId, event.cardId);
     };
+    const onTyping = (event: PresenceTypingEvent): void => {
+      if (event.roomId !== roomId) return;
+      const user = Object.values(useBoardStore.getState().presence).find(
+        (person) => person.userId === event.userId,
+      );
+      useBoardStore.getState().setTyping({
+        userId: event.userId,
+        cardId: event.cardId,
+        name: user?.name ?? "Someone",
+        avatarColor: user?.avatarColor ?? "#94a3b8",
+        typing: event.typing,
+      });
+    };
 
     const onColumnUpsert = (event: BoardColumnEvent): void => {
       if (event.roomId !== roomId) return;
@@ -98,6 +112,7 @@ export function useRoomConnection({ roomId }: Options): void {
     socket.on(SocketEvents.PresenceJoined, onPresenceJoined);
     socket.on(SocketEvents.PresenceLeft, onPresenceLeft);
     socket.on(SocketEvents.PresenceActiveCard, onActiveCard);
+    socket.on(SocketEvents.PresenceTyping, onTyping);
     socket.on(SocketEvents.BoardColumnCreated, onColumnUpsert);
     socket.on(SocketEvents.BoardColumnUpdated, onColumnUpsert);
     socket.on(SocketEvents.BoardColumnDeleted, onColumnDeleted);
@@ -118,6 +133,7 @@ export function useRoomConnection({ roomId }: Options): void {
       socket.off(SocketEvents.PresenceJoined, onPresenceJoined);
       socket.off(SocketEvents.PresenceLeft, onPresenceLeft);
       socket.off(SocketEvents.PresenceActiveCard, onActiveCard);
+      socket.off(SocketEvents.PresenceTyping, onTyping);
       socket.off(SocketEvents.BoardColumnCreated, onColumnUpsert);
       socket.off(SocketEvents.BoardColumnUpdated, onColumnUpsert);
       socket.off(SocketEvents.BoardColumnDeleted, onColumnDeleted);

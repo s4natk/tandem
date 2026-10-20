@@ -27,6 +27,9 @@ COPY package.json ./
 COPY packages ./packages
 COPY apps/server ./apps/server
 
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN npx prisma generate --schema apps/server/prisma/schema.prisma \
  && npm run build -w @collab/shared \
  && npm run build -w @collab/server
@@ -48,6 +51,10 @@ COPY --from=build /workspace/apps/server/package.json ./apps/server/package.json
 COPY --from=build /workspace/apps/server/dist ./apps/server/dist
 COPY --from=build /workspace/apps/server/prisma ./apps/server/prisma
 
+# The Fly release command runs Prisma as this user. The engines directory
+# must be writable or `migrate deploy` exits before the server starts.
+RUN chown -R node:node /app
+
 EXPOSE 4000
 USER node
-CMD ["node", "apps/server/dist/main.js"]
+CMD ["node", "apps/server/dist/apps/server/src/main.js"]

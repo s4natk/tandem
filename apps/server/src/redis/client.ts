@@ -9,11 +9,16 @@ import { logger } from "../config/logger.js";
  */
 
 function build(name: string): Redis {
+  const tls = env.REDIS_URL.startsWith("rediss://");
   const client = new Redis(env.REDIS_URL, {
-    maxRetriesPerRequest: null, // never give up on a single request
+    maxRetriesPerRequest: null,
     enableReadyCheck: true,
     lazyConnect: false,
     connectionName: name,
+    // Fly's default IPv6 route is reset by Upstash. Force IPv4.
+    family: 4,
+    connectTimeout: 10_000,
+    ...(tls ? { tls: { rejectUnauthorized: false } } : {}),
   });
 
   client.on("connect", () => logger.info(`redis:${name} connected`));

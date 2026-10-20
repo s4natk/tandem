@@ -3,14 +3,14 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'tandem-7iulug-coral-coastline-669'
+app = 'tandem-7iulug'
 primary_region = 'iad'
 
 [build]
   dockerfile = 'apps/server/Dockerfile'
 
 [deploy]
-  release_command = 'npx prisma migrate deploy --schema apps/server/prisma/schema.prisma'
+  release_command = './node_modules/.bin/prisma migrate deploy --schema apps/server/prisma/schema.prisma'
 
 [env]
   HOST = '0.0.0.0'

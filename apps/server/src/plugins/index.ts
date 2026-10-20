@@ -25,6 +25,7 @@ export async function registerCorePlugins(app: FastifyInstance): Promise<void> {
     timeWindow: "1 minute",
     redis: redisApp,
     nameSpace: "rl:",
+    allowList: (req) => req.url === "/health" || req.url === "/ready",
     // Rate limit per IP, allow authenticated users a higher ceiling.
     keyGenerator: (req) => {
       const userId = (req.user as { id?: string } | undefined)?.id;

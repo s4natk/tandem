@@ -1,10 +1,14 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { authApi } from "@/api/endpoints";
 import { ApiClientError } from "@/api/client";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuthStore } from "@/store/auth";
+
+const DEMO_EMAIL = "demo@collab.dev";
+const DEMO_PASSWORD = "demo-password";
 
 export function LoginPage(): JSX.Element {
   const [email, setEmail] = useState("");
@@ -13,7 +17,17 @@ export function LoginPage(): JSX.Element {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
   const redirectTo = (location.state as { from?: string } | null)?.from ?? "/app";
+
+  const fillDemo = (): void => {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+  };
+
+  useEffect(() => {
+    if (params.get("demo") === "1") fillDemo();
+  }, [params]);
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -37,74 +51,55 @@ export function LoginPage(): JSX.Element {
 
   return (
     <AuthLayout>
-      <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Sign in to your collaborative workspace.
-      </p>
-      <form className="mt-6 space-y-4" onSubmit={submit}>
+      <h1 className="font-display text-3xl font-bold tracking-tight text-white">Welcome back</h1>
+      <p className="mt-1.5 text-sm text-white/55">Sign in and pick up where your team left off.</p>
+      <form className="mt-7 space-y-4" onSubmit={submit}>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Email</label>
+          <label className="block text-sm font-medium text-white/70">Email</label>
           <input
             type="email"
             autoComplete="email"
             required
-            className="input mt-1"
+            className="input mt-1.5 py-2.5"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Password</label>
+          <label className="block text-sm font-medium text-white/70">Password</label>
           <input
             type="password"
             autoComplete="current-password"
             required
             minLength={8}
-            className="input mt-1"
+            className="input mt-1.5 py-2.5"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        <button type="submit" className="btn-primary w-full" disabled={loading}>
+        <button type="submit" className="btn-glow w-full py-3" disabled={loading}>
           {loading ? <Spinner size="sm" className="text-white" /> : "Sign in"}
         </button>
       </form>
-      <button
-        type="button"
-        className="btn-secondary mt-4 w-full"
-        onClick={() => {
-          setEmail("demo@collab.dev");
-          setPassword("demo-password");
-        }}
-      >
+
+      <div className="my-6 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/30">
+        <span className="h-px flex-1 bg-white/10" />
+        or
+        <span className="h-px flex-1 bg-white/10" />
+      </div>
+
+      <button type="button" className="btn-outline-dark w-full py-3" onClick={fillDemo}>
         Use the demo account
       </button>
-      <p className="mt-3 text-center text-xs text-slate-500">
-        demo@collab.dev · demo-password · room code demo1234
+      <p className="mt-3 text-center text-xs text-white/40">
+        {DEMO_EMAIL} · {DEMO_PASSWORD} · room code demo1234
       </p>
-      <p className="mt-6 text-sm text-slate-600">
+      <p className="mt-7 text-center text-sm text-white/55">
         Need an account?{" "}
-        <Link to="/signup" className="font-medium text-brand-600 hover:underline">
+        <Link to="/signup" className="font-semibold text-brand-200 hover:text-white">
           Create one
         </Link>
       </p>
     </AuthLayout>
-  );
-}
-
-export function AuthLayout({ children }: { children: React.ReactNode }): JSX.Element {
-  return (
-    <div className="flex min-h-full items-center justify-center bg-gradient-to-br from-slate-50 via-white to-brand-50 px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-brand-500 to-pink-500" />
-          <span className="text-xl font-semibold tracking-tight">Collab</span>
-        </div>
-        <div className="card-surface px-6 py-8 sm:px-8">{children}</div>
-        <p className="mt-6 text-center text-xs text-slate-500">
-          Real-time collaborative workspaces · MIT licensed
-        </p>
-      </div>
-    </div>
   );
 }

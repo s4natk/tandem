@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { workspacesApi } from "@/api/endpoints";
+import { CruisingBike } from "@/components/brand/TandemBike";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuthStore } from "@/store/auth";
 
@@ -14,13 +15,19 @@ export function HomePage(): JSX.Element {
   return (
     <div className="flex-1 overflow-y-auto px-8 py-10">
       <div className="mx-auto max-w-4xl">
-        <header className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back{user ? `, ${user.name.split(" ")[0]}` : ""}
-          </h1>
-          <p className="mt-1 text-slate-600">
-            Open a workspace, jump into a board, or create something new.
-          </p>
+        <header className="relative mb-8 overflow-hidden rounded-3xl bg-ink-900 px-7 py-8 text-white shadow-[0_24px_60px_-30px_rgba(10,9,32,0.9)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_90%_at_85%_0%,rgba(114,98,251,0.45),transparent_60%),radial-gradient(ellipse_50%_60%_at_0%_100%,rgba(217,70,239,0.15),transparent_60%)]" />
+          <div className="relative flex items-center justify-between gap-6">
+            <div>
+              <h1 className="font-display text-3xl font-bold tracking-tight">
+                Welcome back{user ? `, ${user.name.split(" ")[0]}` : ""}
+              </h1>
+              <p className="mt-1.5 text-white/60">
+                Open a workspace, jump into a board, or create something new.
+              </p>
+            </div>
+            <CruisingBike degreesPerSecond={200} className="hidden w-52 shrink-0 sm:block" />
+          </div>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

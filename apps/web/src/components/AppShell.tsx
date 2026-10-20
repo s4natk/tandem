@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { workspacesApi } from "@/api/endpoints";
@@ -7,6 +8,7 @@ import { useAuthStore } from "@/store/auth";
 import { authApi } from "@/api/endpoints";
 import { closeSocket } from "@/realtime/socket";
 import { useBoardStore } from "@/store/board";
+import { TandemLogo } from "@/components/brand/TandemLogo";
 import { cn } from "@/lib/cn";
 
 export function AppShell(): JSX.Element {
@@ -35,31 +37,32 @@ export function AppShell(): JSX.Element {
 
   return (
     <div className="grid h-full grid-cols-[260px_1fr] bg-slate-50">
-      <aside className="flex flex-col border-r border-slate-200 bg-white">
-        <div className="flex items-center gap-2 px-5 py-4">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-500 to-pink-500" />
-          <Link to="/app" className="text-lg font-semibold tracking-tight">
-            Collab
-          </Link>
-        </div>
+      <aside className="relative flex flex-col overflow-hidden border-r border-white/[0.06] bg-ink-900 text-white/75">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(ellipse_at_top,rgba(114,98,251,0.28),transparent_70%)]" />
+        <Link
+          to="/app"
+          className="relative flex items-center gap-2.5 px-5 py-4 outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+        >
+          <TandemLogo />
+        </Link>
 
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="relative flex-1 space-y-1 px-3">
           <SidebarLink to="/app" end label="Home" icon={IconHome} />
 
           <div className="pt-4">
-            <div className="flex items-center justify-between px-2 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <div className="flex items-center justify-between px-2 pb-1 text-xs font-semibold uppercase tracking-wider text-white/35">
               Workspaces
               <Link
                 to="/app/new"
-                className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+                className="rounded-md p-1 text-white/45 transition hover:bg-white/10 hover:text-white"
                 title="New workspace"
               >
                 <IconPlus />
               </Link>
             </div>
             {wsQuery.isLoading && (
-              <div className="px-2 py-3 text-sm text-slate-500">
-                <Spinner size="sm" /> Loading…
+              <div className="flex items-center gap-2 px-2 py-3 text-sm text-white/45">
+                <Spinner size="sm" className="text-brand-300" /> Loading…
               </div>
             )}
             {wsQuery.data?.workspaces.map((ws) => (
@@ -71,7 +74,7 @@ export function AppShell(): JSX.Element {
               />
             ))}
             {wsQuery.data && wsQuery.data.workspaces.length === 0 && (
-              <div className="px-2 py-2 text-xs text-slate-500">
+              <div className="px-2 py-2 text-xs text-white/40">
                 No workspaces yet
               </div>
             )}
@@ -83,15 +86,15 @@ export function AppShell(): JSX.Element {
         </nav>
 
         {user && (
-          <div className="flex items-center gap-3 border-t border-slate-100 px-4 py-3">
-            <Avatar name={user.name} color={user.avatarColor} size="sm" />
+          <div className="relative flex items-center gap-3 border-t border-white/[0.06] px-4 py-3">
+            <Avatar name={user.name} color={user.avatarColor} size="sm" className="ring-ink-900" />
             <div className="flex-1 overflow-hidden">
-              <div className="truncate text-sm font-medium">{user.name}</div>
-              <div className="truncate text-xs text-slate-500">{user.email}</div>
+              <div className="truncate text-sm font-medium text-white">{user.name}</div>
+              <div className="truncate text-xs text-white/45">{user.email}</div>
             </div>
             <button
               onClick={handleLogout}
-              className="rounded-md p-2 text-slate-500 hover:bg-slate-100"
+              className="rounded-md p-2 text-white/45 transition hover:bg-white/10 hover:text-white"
               title="Sign out"
             >
               <IconLogout />
@@ -101,7 +104,15 @@ export function AppShell(): JSX.Element {
       </aside>
 
       <main className="flex h-full min-w-0 flex-col overflow-hidden">
-        <Outlet />
+        <Suspense
+          fallback={
+            <div className="flex flex-1 items-center justify-center">
+              <Spinner />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );
@@ -124,10 +135,10 @@ function SidebarLink({
       end={end}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+          "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors",
           isActive
-            ? "bg-brand-50 text-brand-700"
-            : "text-slate-700 hover:bg-slate-100",
+            ? "bg-white/10 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+            : "text-white/65 hover:bg-white/[0.06] hover:text-white",
         )
       }
     >

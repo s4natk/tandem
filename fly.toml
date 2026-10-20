@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for tandem-7iulug-coral-coastline-669 on 2026-10-19T23:57:51-04:00
+# fly.toml app configuration file generated for tandem-7iulug on 2026-10-20T04:12:15Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'tandem-7iulug-coral-coastline-669'
+app = 'tandem-7iulug'
 primary_region = 'iad'
 
 [build]

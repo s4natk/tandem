@@ -1,38 +1,39 @@
-# Fly.io app for the API and WebSocket server.
-# Postgres and Redis are attached separately. See docs/SHIP.md.
-# Rename `app` if "cardroom" is already taken: fly apps create cardroom-yourname
+# fly.toml app configuration file generated for tandem-7iulug-coral-coastline-669 on 2026-10-19T23:57:51-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "tandem-7iulug"
-primary_region = "iad"
+app = 'tandem-7iulug-coral-coastline-669'
+primary_region = 'iad'
 
 [build]
-  dockerfile = "apps/server/Dockerfile"
+  dockerfile = 'apps/server/Dockerfile'
+
+[deploy]
+  release_command = 'npx prisma migrate deploy --schema apps/server/prisma/schema.prisma'
 
 [env]
-  PORT = "4000"
-  HOST = "0.0.0.0"
-  NODE_ENV = "production"
-  SOCKET_IO_REDIS_ADAPTER = "true"
-  LOG_LEVEL = "info"
+  HOST = '0.0.0.0'
+  LOG_LEVEL = 'info'
+  NODE_ENV = 'production'
+  PORT = '4000'
+  SOCKET_IO_REDIS_ADAPTER = 'true'
 
 [http_service]
   internal_port = 4000
   force_https = true
-  auto_stop_machines = "off"
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
+  processes = ['app']
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '5s'
+    grace_period = '30s'
+    method = 'GET'
+    path = '/health'
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "512mb"
-
-[[http_service.checks]]
-    interval = "15s"
-    timeout = "5s"
-    grace_period = "30s"
-    method = "GET"
-    path = "/health"
-
-[deploy]
-  release_command = "npx prisma migrate deploy --schema apps/server/prisma/schema.prisma"
+  size = 'shared-cpu-1x'
+  memory = '512mb'

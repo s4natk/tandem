@@ -27,7 +27,7 @@ export function AuthLayout({ children }: { children: ReactNode }): JSX.Element {
               <CruisingBike degreesPerSecond={190} className="relative" />
             </div>
             <h2 className="mt-10 font-display text-4xl font-bold leading-tight tracking-tight xl:text-5xl">
-              Work in <span className="gradient-text motion-safe:animate-shimmer">tandem</span>.
+              Work in <span className="gradient-text animate-shimmer">tandem</span>.
             </h2>
             <ul className="mt-6 space-y-3">
               {POINTS.map((point) => (

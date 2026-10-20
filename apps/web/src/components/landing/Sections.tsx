@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CruisingBike, TandemMark } from "@/components/brand/TandemBike";
+import { TandemMark } from "@/components/brand/TandemBike";
 import { cn } from "@/lib/cn";
 
 export const GITHUB_URL = "https://github.com/s4natk/tandem";
@@ -102,7 +101,7 @@ export function HowItWorks(): JSX.Element {
             strokeWidth="2"
             strokeDasharray="6 6"
             vectorEffect="non-scaling-stroke"
-            className="motion-safe:animate-chain"
+            className="animate-chain"
           />
         </svg>
         <ol className="relative grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
@@ -179,7 +178,7 @@ function PresenceArt(): JSX.Element {
           <span key={p.initial} className="relative">
             {i === 0 && (
               <span
-                className="absolute inset-0 rounded-full motion-safe:animate-pulse-ring"
+                className="absolute inset-0 rounded-full animate-pulse-ring"
                 style={{ backgroundColor: p.color }}
               />
             )}
@@ -227,7 +226,7 @@ function FeedArt(): JSX.Element {
           key={row.text}
           className={cn(
             "flex items-center gap-2 rounded-lg px-2 py-1",
-            row.fresh && "bg-white/[0.05] motion-safe:animate-pulse",
+            row.fresh && "bg-white/[0.05] animate-pulse",
           )}
         >
           <span className={cn("h-1.5 w-1.5 rounded-full", row.color)} />
@@ -261,7 +260,7 @@ function ScaleArt(): JSX.Element {
       <span className="z-10 rounded-xl border border-rose-300/25 bg-rose-500/15 px-3 py-2 text-rose-100">Redis</span>
       <span className="z-10 rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-white/75">API B</span>
       <div className="absolute inset-x-10 top-1/2 h-px overflow-hidden bg-white/10">
-        <span className="absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-brand-300 to-transparent motion-safe:animate-flow-x" />
+        <span className="absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-brand-300 to-transparent animate-flow-x" />
       </div>
     </div>
   );
@@ -333,7 +332,7 @@ export function FeatureGrid(): JSX.Element {
         eyebrow="Features"
         title={
           <>
-            Built like a <span className="gradient-text motion-safe:animate-shimmer">real product</span>
+            Built like a <span className="gradient-text animate-shimmer">real product</span>
           </>
         }
         subtitle="Everything on this page runs in the codebase, from presence to version checks."
@@ -348,87 +347,6 @@ export function FeatureGrid(): JSX.Element {
           </Reveal>
         ))}
       </div>
-    </section>
-  );
-}
-
-const STACK_TOP = ["TypeScript", "React", "Vite", "Tailwind CSS", "Framer Motion", "Zustand", "React Query", "dnd-kit"];
-const STACK_BOTTOM = ["Node.js", "Fastify", "Socket.IO", "PostgreSQL", "Prisma", "Redis", "Docker", "Zod"];
-
-function MarqueeRow({ items, reverse }: { items: string[]; reverse?: boolean }): JSX.Element {
-  const doubled = [...items, ...items];
-  return (
-    <div className="group relative flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
-      <div
-        className={cn(
-          "flex shrink-0 gap-3 pr-3 group-hover:[animation-play-state:paused]",
-          reverse ? "motion-safe:animate-marquee-rev" : "motion-safe:animate-marquee",
-        )}
-      >
-        {doubled.map((item, i) => (
-          <span
-            key={`${item}-${i}`}
-            className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/75"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-brand-300 to-fuchsia-300" />
-            {item}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function TechMarquee(): JSX.Element {
-  return (
-    <section className="relative px-0 py-16">
-      <Reveal className="mb-8 text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">
-        Under the hood
-      </Reveal>
-      <div className="space-y-3">
-        <MarqueeRow items={STACK_TOP} />
-        <MarqueeRow items={STACK_BOTTOM} reverse />
-      </div>
-    </section>
-  );
-}
-
-export function FinalCta({ authed }: { authed: boolean }): JSX.Element {
-  return (
-    <section className="relative px-6 py-24 sm:py-32">
-      <Reveal className="relative mx-auto max-w-4xl">
-        <div className="absolute -inset-px rounded-[2rem] bg-gradient-to-r from-brand-400/50 via-fuchsia-400/30 to-cyan-300/40 blur-[1px]" />
-        <div className="relative overflow-hidden rounded-[2rem] bg-ink-850/95 px-6 py-14 text-center sm:px-14">
-          <div className="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_top,rgba(114,98,251,0.35),transparent_70%)]" />
-          <div className="relative mx-auto w-[min(300px,70vw)]">
-            <CruisingBike degreesPerSecond={220} />
-          </div>
-          <h2 className="relative mt-8 font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
-            Ready to ride together?
-          </h2>
-          <p className="relative mx-auto mt-4 max-w-xl text-base text-white/55 sm:text-lg">
-            Make a board, share the code, and watch your team’s plan move in real time.
-          </p>
-          <div className="relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            {authed ? (
-              <Link to="/app" className="btn-glow group">
-                Open your boards
-                <ArrowRight />
-              </Link>
-            ) : (
-              <>
-                <Link to="/signup" className="btn-glow group">
-                  Create your free board
-                  <ArrowRight />
-                </Link>
-                <Link to="/login" className="btn-outline-dark">
-                  Log in
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </Reveal>
     </section>
   );
 }

@@ -353,8 +353,7 @@ export function CruisingBike({
   const wheel = useMotionValue(0);
   const speed = useMotionValue(degreesPerSecond);
   useLayoutEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    speed.set(reduce ? 0 : degreesPerSecond);
+    speed.set(degreesPerSecond);
   }, [degreesPerSecond, speed]);
   useCruise(wheel, speed);
   return <TandemBike wheelAngle={wheel} className={className} />;

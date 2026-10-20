@@ -128,8 +128,6 @@ export function LiveBoardPreview(): JSX.Element {
   const inView = useInView(rootRef, { amount: 0.3 });
   const inViewRef = useRef(inView);
   inViewRef.current = inView;
-  const [reduced] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-
   const [board, setBoard] = useState(INITIAL_BOARD);
   const [cards, setCards] = useState(INITIAL_CARDS);
   const [held, setHeld] = useState<Partial<Record<string, ActorId>>>({});
@@ -169,7 +167,6 @@ export function LiveBoardPreview(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    if (reduced) return;
     let alive = true;
     const cursors = cursorsRef.current;
 
@@ -325,7 +322,7 @@ export function LiveBoardPreview(): JSX.Element {
     return () => {
       alive = false;
     };
-  }, [reduced]);
+  }, []);
 
   const setCardEl = (id: string) => (el: HTMLElement | null) => {
     if (el) cardEls.current.set(id, el);
@@ -417,12 +414,8 @@ export function LiveBoardPreview(): JSX.Element {
                 </ul>
               </aside>
 
-              {!reduced && (
-                <>
-                  <Cursor actor="maya" state={maya} toast={toast?.actor === "maya" ? toast.text : null} />
-                  <Cursor actor="leo" state={leo} toast={toast?.actor === "leo" ? toast.text : null} />
-                </>
-              )}
+              <Cursor actor="maya" state={maya} toast={toast?.actor === "maya" ? toast.text : null} />
+              <Cursor actor="leo" state={leo} toast={toast?.actor === "leo" ? toast.text : null} />
             </div>
           </LayoutGroup>
         </div>

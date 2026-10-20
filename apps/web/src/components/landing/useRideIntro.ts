@@ -27,7 +27,6 @@ export interface RideIntro {
   revealed: boolean;
   /** A replay lap is in progress. */
   busy: boolean;
-  reduced: boolean;
   curtainWidth: number;
   curtain: {
     x: MotionValue<number>;
@@ -49,10 +48,6 @@ export interface RideIntro {
   skip: () => void;
   replay: () => void;
   setHover: (hovering: boolean) => void;
-}
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 function hasSeenIntro(): boolean {
@@ -79,8 +74,7 @@ function curtainBikeWidth(vw: number, vh: number): number {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function useRideIntro(): RideIntro {
-  const [reduced] = useState(prefersReducedMotion);
-  const [autoplay] = useState(() => !reduced && !hasSeenIntro());
+  const [autoplay] = useState(() => !hasSeenIntro());
   const [phase, setPhase] = useState<IntroPhase>(autoplay ? "curtain" : "done");
   const [revealed, setRevealed] = useState(!autoplay);
   const [busy, setBusy] = useState(false);
@@ -153,8 +147,8 @@ export function useRideIntro(): RideIntro {
     busyRef.current = false;
     setBusy(false);
     markIntroSeen();
-    if (!reduced) go(cruise, CRUISE_SPEED, { duration: 1.4, ease: "easeInOut" });
-  }, [cruise, go, reduced]);
+    go(cruise, CRUISE_SPEED, { duration: 1.4, ease: "easeInOut" });
+  }, [cruise, go]);
 
   const settle = useCallback(() => {
     runId.current++;
@@ -218,7 +212,7 @@ export function useRideIntro(): RideIntro {
 
   useEffect(() => {
     if (!autoplay) {
-      if (!reduced) cruise.set(CRUISE_SPEED);
+      cruise.set(CRUISE_SPEED);
       return;
     }
     const id = ++runId.current;
@@ -268,7 +262,7 @@ export function useRideIntro(): RideIntro {
   }, [phase, settle]);
 
   const replay = useCallback(() => {
-    if (phaseRef.current !== "done" || busyRef.current || reduced) return;
+    if (phaseRef.current !== "done" || busyRef.current) return;
     const slot = slotRef.current;
     if (!slot) return;
     busyRef.current = true;
@@ -293,23 +287,22 @@ export function useRideIntro(): RideIntro {
       if (runId.current !== id) return;
       await arrive(id);
     })();
-  }, [arrive, cruise, go, heroLean, heroWheel, heroX, label, reduced, ride, speedLines]);
+  }, [arrive, cruise, go, heroLean, heroWheel, heroX, label, ride, speedLines]);
 
   const setHover = useCallback(
     (hovering: boolean) => {
-      if (phaseRef.current !== "done" || busyRef.current || reduced) return;
+      if (phaseRef.current !== "done" || busyRef.current) return;
       go(cruise, hovering ? HOVER_SPEED : CRUISE_SPEED, { duration: 0.7, ease: "easeOut" });
       go(heroLean, hovering ? -2.5 : 0, { type: "spring", stiffness: 220, damping: 18 });
       go(speedLines, hovering ? 1.7 : 1, { duration: 0.45, ease: "easeOut" });
     },
-    [cruise, go, heroLean, reduced, speedLines],
+    [cruise, go, heroLean, speedLines],
   );
 
   return {
     phase,
     revealed,
     busy,
-    reduced,
     curtainWidth,
     curtain: { x: curtainX, wheel: curtainWheel, speed: curtainSpeed },
     hero: {

@@ -49,7 +49,6 @@ export function AuroraBackground({ className, parallax = true }: Props): JSX.Ele
 
   useEffect(() => {
     if (!parallax) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const onMove = (e: PointerEvent): void => {
       px.set((e.clientX / window.innerWidth - 0.5) * 36);
       py.set((e.clientY / window.innerHeight - 0.5) * 28);
@@ -63,14 +62,14 @@ export function AuroraBackground({ className, parallax = true }: Props): JSX.Ele
       aria-hidden="true"
       className={cn("noise pointer-events-none fixed inset-0 overflow-hidden bg-ink-900", className)}
     >
-      <div className="absolute inset-0 motion-safe:animate-aurora bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(114,98,251,0.34),transparent_60%),radial-gradient(ellipse_45%_40%_at_100%_100%,rgba(217,70,239,0.12),transparent_60%),radial-gradient(ellipse_45%_45%_at_0%_85%,rgba(34,211,238,0.09),transparent_60%)]" />
+      <div className="absolute inset-0 animate-aurora bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(114,98,251,0.34),transparent_60%),radial-gradient(ellipse_45%_40%_at_100%_100%,rgba(217,70,239,0.12),transparent_60%),radial-gradient(ellipse_45%_45%_at_0%_85%,rgba(34,211,238,0.09),transparent_60%)]" />
       <div className="bg-grid absolute inset-0 opacity-50 [mask-image:radial-gradient(ellipse_70%_55%_at_50%_30%,black,transparent)]" />
 
       <motion.div className="absolute inset-0" style={{ x: px, y: py }}>
         {BLOBS.map((blob) => (
           <div
             key={blob.className}
-            className={cn("absolute rounded-full blur-3xl will-change-transform motion-safe:animate-blob", blob.className)}
+            className={cn("absolute rounded-full blur-3xl will-change-transform animate-blob", blob.className)}
             style={{ animationDuration: blob.duration }}
           />
         ))}
@@ -83,7 +82,7 @@ export function AuroraBackground({ className, parallax = true }: Props): JSX.Ele
             className={cn(
               "absolute rounded-full",
               p.color,
-              p.reverse ? "motion-safe:animate-wander-rev" : "motion-safe:animate-wander",
+              p.reverse ? "animate-wander-rev" : "animate-wander",
             )}
             style={{
               top: p.top,
@@ -97,7 +96,7 @@ export function AuroraBackground({ className, parallax = true }: Props): JSX.Ele
         {RINGS.map((ring) => (
           <span
             key={`${ring.top}-${ring.left}`}
-            className={cn("absolute border motion-safe:animate-ring-morph", ring.color)}
+            className={cn("absolute border animate-ring-morph", ring.color)}
             style={{
               top: ring.top,
               left: ring.left,

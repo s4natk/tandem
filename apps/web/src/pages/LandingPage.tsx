@@ -8,11 +8,9 @@ import { LiveBoardPreview } from "@/components/landing/LiveBoardPreview";
 import {
   ArrowRight,
   FeatureGrid,
-  FinalCta,
   HowItWorks,
   SectionHeading,
   SiteFooter,
-  TechMarquee,
 } from "@/components/landing/Sections";
 import { useRideIntro } from "@/components/landing/useRideIntro";
 import { useAuthStore } from "@/store/auth";
@@ -32,11 +30,9 @@ const heroItem: Variants = {
   },
 };
 
-const CHIPS = ["Live presence", "Conflict-safe edits", "Join with a code"];
-
 export function LandingPage(): JSX.Element {
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion="never">
       <LandingContent />
     </MotionConfig>
   );
@@ -72,10 +68,9 @@ function LandingContent(): JSX.Element {
             </motion.h1>
             <motion.p
               variants={heroItem}
-              className="mt-5 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg"
+              className="mt-5 whitespace-nowrap text-[13px] text-white/60 sm:text-base lg:text-lg"
             >
-              Shared Kanban boards that move the moment a teammate drags a card. Live presence,
-              conflict-safe edits, and a running activity feed, with no refresh button anywhere.
+              Shared Kanban boards that move the moment a teammate drags a card.
             </motion.p>
 
             <motion.div
@@ -99,32 +94,7 @@ function LandingContent(): JSX.Element {
                 </>
               )}
             </motion.div>
-
-            <motion.ul variants={heroItem} className="mt-8 flex flex-wrap justify-center gap-2.5">
-              {CHIPS.map((chip) => (
-                <li
-                  key={chip}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 text-sm text-white/65 backdrop-blur"
-                >
-                  {chip}
-                </li>
-              ))}
-            </motion.ul>
           </motion.div>
-
-          <motion.a
-            href="#preview"
-            aria-label="Scroll to the live preview"
-            className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/35 transition hover:text-white/70 sm:flex [@media(max-height:860px)]:!hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: intro.revealed ? 1 : 0 }}
-            transition={{ delay: intro.revealed ? 0.9 : 0, duration: 0.6 }}
-          >
-            Scroll
-            <span className="flex h-8 w-5 justify-center rounded-full border border-white/20 pt-1.5">
-              <span className="h-1.5 w-1 rounded-full bg-white/60 motion-safe:animate-bob" />
-            </span>
-          </motion.a>
         </section>
 
         <section id="preview" className="relative scroll-mt-24 px-6 py-24 sm:py-32">
@@ -138,8 +108,6 @@ function LandingContent(): JSX.Element {
 
         <HowItWorks />
         <FeatureGrid />
-        <TechMarquee />
-        <FinalCta authed={authed} />
       </main>
 
       <SiteFooter />
@@ -181,7 +149,7 @@ function PedalWord({ word }: { word: string }): JSX.Element {
         <span
           key={i}
           aria-hidden="true"
-          className="gradient-text inline-block motion-safe:animate-pedal"
+          className="gradient-text inline-block animate-pedal"
           style={{
             animationDelay: i % 2 === 0 ? "0s" : "-0.7s",
             backgroundSize: `${letters.length * 100}% 100%`,

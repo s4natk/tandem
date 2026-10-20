@@ -1,50 +1,68 @@
-# Ship the demo tonight
+# Live demo: Fly.io + Vercel
 
-The live app is the React site on Vercel and the API plus WebSockets on Fly.io.
-Postgres and Redis are still required. AWS stays a design document. You do not
-need to deploy ECS, RDS, or ElastiCache to put a link on your resume.
+The site is a static React app on Vercel. The API and WebSockets run on one
+small Fly machine. Postgres is a free Neon database. Redis is a free Upstash
+database.
 
-File uploads stay off until you add an S3 bucket. The board, auth, presence,
-and activity feed do not need S3.
+Do not run `fly postgres create` or create Fly Managed Postgres. That starts
+at about $38 a month. The only paid piece in this guide is the Fly machine,
+about $3.69 a month in Ashburn because `fly.toml` keeps it awake.
 
-## Tools to install
+File uploads stay off. They need S3, and the board does not.
 
-Install these on your machine before you start:
+## Cost
+
+| Piece | What to pick | Cost |
+| --- | --- | --- |
+| Vercel | Hobby plan | $0 |
+| Upstash Redis | Free database | $0 |
+| Neon Postgres | Free project, direct connection string | $0 |
+| Fly API machine | `shared-cpu-1x`, 512 MB, always on | about $3.69/month |
+
+Installing CLIs and creating accounts does not charge you. Billing starts when
+`fly deploy` leaves the machine running. Delete it later with
+`fly apps destroy cardroom`.
+
+## Tools
 
 1. [Git](https://git-scm.com/downloads)
 2. [Node.js 20+](https://nodejs.org/)
-3. [Fly CLI](https://fly.io/docs/flyctl/install/)
-4. A [Fly.io](https://fly.io/app/sign-up) account
-5. A [Vercel](https://vercel.com/signup) account
-6. An [Upstash](https://upstash.com/) account for Redis (free tier is enough)
-7. The GitHub repo already connected to this folder
-
-You do not need Docker or an AWS account for the public demo.
-
-Check the CLIs:
+3. [Fly CLI](https://fly.io/docs/flyctl/install/) for Windows:
+   `powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"`
+4. Accounts: [Fly](https://fly.io/app/sign-up), [Vercel](https://vercel.com/signup), [Neon](https://neon.tech), [Upstash](https://upstash.com/)
+5. This repo pushed to GitHub
 
 ```powershell
 git --version
 node --version
 fly version
-```
-
-Sign in:
-
-```powershell
 fly auth login
 ```
 
-Vercel can be deployed from the website. The CLI is optional.
+## 1. Push the code
 
-## 1. Push this code
+From the repo root, commit and push `fly.toml`, `vercel.json`, and
+`apps/server/prisma/migrations`. Vercel deploys from GitHub. Fly deploys from
+this folder.
 
-Commit the migration, `fly.toml`, and `vercel.json`, then push to GitHub.
+If the name `cardroom` is already taken on Fly, change `app` in `fly.toml`
+to something unique, such as `cardroom-yourname`, before `fly launch`.
 
-If the Fly app name `cardroom` is taken, change `app` in `fly.toml` to
-something unique, such as `cardroom-yourname`, before the next step.
+## 2. Create the free databases
 
-## 2. Create the Fly API
+**Neon.** Create a project. Copy the **direct** connection string, the host
+that does **not** contain `-pooler`. It looks like:
+
+```text
+postgresql://USER:PASSWORD@ep-something.region.aws.neon.tech/neondb?sslmode=require
+```
+
+Prisma migrations need that direct URL.
+
+**Upstash.** Create a Redis database and choose the **Free** plan, not Pay as
+you go. Copy the `rediss://` URL.
+
+## 3. Create the Fly app and secrets
 
 From the repo root:
 
@@ -52,128 +70,95 @@ From the repo root:
 fly launch --no-deploy --copy-config
 ```
 
-Accept the existing `fly.toml`. Do not let Fly add its own Postgres yet if it
-offers a different plan you do not want. You will attach a database yourself
-in the next step.
+If Fly asks to add Postgres, say no.
 
-```powershell
-fly postgres create --name cardroom-db --region iad
-fly postgres attach cardroom-db
-```
-
-`attach` sets `DATABASE_URL` on the app.
-
-Create a free Redis database in the Upstash console and copy its Redis URL.
-It usually starts with `rediss://`.
-
-Generate two different secrets in PowerShell:
+Generate two different JWT secrets. Run this twice:
 
 ```powershell
 [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
 ```
 
-Run that twice. Then:
+Set secrets. Paste your real Neon and Upstash URLs. The site URL is a
+placeholder until Vercel exists. No trailing slash.
 
 ```powershell
-fly secrets set JWT_ACCESS_SECRET="paste-first-secret" JWT_REFRESH_SECRET="paste-second-secret" REDIS_URL="rediss://paste-upstash-url" CORS_ORIGIN="https://placeholder.vercel.app"
+fly secrets set `
+  DATABASE_URL="postgresql://USER:PASSWORD@ep-something.region.aws.neon.tech/neondb?sslmode=require" `
+  REDIS_URL="rediss://default:TOKEN@HOST.upstash.io:6379" `
+  JWT_ACCESS_SECRET="first-secret" `
+  JWT_REFRESH_SECRET="second-secret" `
+  CORS_ORIGIN="https://placeholder.vercel.app"
 ```
 
-`CORS_ORIGIN` is updated after Vercel gives you the real site URL.
-
-Deploy the API. The release command applies the Prisma migration.
+Deploy. The release command runs `prisma migrate deploy` and creates the tables.
 
 ```powershell
 fly deploy
-```
-
-Check it:
-
-```powershell
+fly status
 fly open /health
 ```
 
-You should see `{"status":"ok",...}`.
+`/health` should show `{"status":"ok"}`. The hostname is `https://<app-name>.fly.dev`.
 
-Seed the demo user. This creates `demo@collab.dev` / `demo-password` and room
-code `demo1234`.
+Seed the demo account (`demo@collab.dev` / `demo-password`, room code `demo1234`):
 
 ```powershell
 fly ssh console -C "./node_modules/.bin/tsx apps/server/prisma/seed.ts"
 ```
 
-## 3. Create the Vercel site
+## 4. Deploy the site on Vercel
 
-In Vercel: Add New, Project, import the GitHub repo.
-
-Use these settings if it does not read `vercel.json`:
+Import the GitHub repo. If the form does not match `vercel.json`, set:
 
 - Framework preset: Vite
-- Root directory: the repository root, not `apps/web`
+- Root directory: repository root, not `apps/web`
 - Build command: `npm run build -w @collab/shared && npm run build -w @collab/web`
 - Output directory: `apps/web/dist`
 
-Environment variables, set for Production:
+Production environment variables. Use the hostname from `fly status`:
 
 ```text
 VITE_API_URL=https://cardroom.fly.dev
 VITE_WS_URL=https://cardroom.fly.dev
 ```
 
-Use your real Fly hostname if the app name is not `cardroom`. Find it with
-`fly status`.
+Deploy and copy the Vercel URL, for example `https://cardroom.vercel.app`.
 
-Deploy. Copy the Vercel URL, for example `https://cardroom.vercel.app`.
-
-## 4. Connect the site to the API
+## 5. Allow the site to call the API
 
 ```powershell
 fly secrets set CORS_ORIGIN="https://cardroom.vercel.app"
 fly deploy
 ```
 
-No trailing slash. If you add a custom domain later, set both origins in one
-value separated by a comma:
+The value must match the browser address bar exactly, with `https://` and no
+trailing slash. Two origins are comma-separated:
 
 ```text
-https://cardroom.vercel.app,https://cardroom.yourdomain.com
+https://cardroom.vercel.app,https://tandem.yourdomain.com
 ```
 
-Changing `VITE_` variables requires a new Vercel deployment. Changing Fly
-secrets requires `fly deploy`.
+`VITE_` changes need a new Vercel deployment. Fly secret changes need
+`fly deploy`.
 
-## 5. Prove the demo
+## 6. Check the live demo
 
 1. Open the Vercel URL.
 2. Click **Use the demo account** and sign in.
-3. Open room code `demo1234`.
-4. Open a second browser, create another account, and join `demo1234`.
-5. Drag a card in one window and confirm the other window moves.
-6. Put the Vercel URL on the README, resume, and LinkedIn.
+3. Join room `demo1234`.
+4. In a second browser, sign up and join the same code.
+5. Drag a card. The other window should move.
 
-## If something fails
+That Vercel URL is the resume link.
 
-- **Fly health check never goes green.** Run `fly logs`. The usual cause is a
-  missing `DATABASE_URL`, `REDIS_URL`, or JWT secret. The process exits
-  immediately when those are empty.
-- **The site loads and every request fails.** `VITE_API_URL` was wrong at
-  build time, or `CORS_ORIGIN` does not exactly match the Vercel URL.
-- **Login works, the board never loads.** The WebSocket URL must be the Fly
-  `https://` host, not the Vercel host. Vercel does not serve this socket.
-- **Migration says tables already exist.** Only on an old local database. On
-  Fly this should be a fresh Postgres. Locally, run
-  `npx prisma migrate resolve --applied 20261014033000_init --schema apps/server/prisma/schema.prisma`.
-- **Demo login says invalid password.** The seed did not run. Run the `fly ssh`
-  command again.
+## If it fails
 
-## Cost tonight
-
-Vercel Hobby and Upstash's free Redis database are $0. One small Fly machine
-plus the smallest Fly Postgres is usually a few dollars if you leave them on,
-or under about $10 for the month. Stop the demo later with `fly scale count 0`
-and by pausing the Postgres cluster in the Fly dashboard.
-
-## What you are not doing tonight
-
-Do not deploy the ECS, RDS, ElastiCache, and CloudFront design. That write-up
-is `docs/AWS_DEPLOYMENT.md`. S3 file upload, email, and cursor-level editing
-are optional follow-ups. The recruiting demo is the shared board.
+- **Health check never passes.** `fly logs`. A missing `DATABASE_URL`,
+  `REDIS_URL`, or JWT secret makes the process exit on boot.
+- **Browser requests fail.** `VITE_API_URL` was wrong when Vercel built, or
+  `CORS_ORIGIN` does not exactly match the Vercel URL.
+- **Login works, the board spins.** `VITE_WS_URL` must be the Fly `https://`
+  host. Vercel cannot host this socket.
+- **Demo password is rejected.** Run the seed command again.
+- **Migration fails on Neon.** You used the pooled URL. Switch `DATABASE_URL`
+  to the direct host and run `fly deploy` again.

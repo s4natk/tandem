@@ -2,7 +2,7 @@
 # Postgres and Redis are attached separately. See docs/SHIP.md.
 # Rename `app` if "cardroom" is already taken: fly apps create cardroom-yourname
 
-app = "cardroom"
+app = "tandem-7iulug"
 primary_region = "iad"
 
 [build]

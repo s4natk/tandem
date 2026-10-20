@@ -1,296 +1,174 @@
-# Collab — Real-Time Collaborative Kanban
+# Tandem
 
-> Production-quality realtime collaboration app. Multiple users join a shared
-> board, drag cards in real time, see each other's presence, and recover
-> cleanly from concurrent edits. Built as a portfolio-grade reference for
-> real-time systems work — TypeScript end-to-end, clean architecture,
-> PostgreSQL + Redis, Socket.IO, and a deployable AWS path.
+Shared Kanban boards that move the moment a teammate drags a card. Live presence, conflict-safe edits, and a running activity feed — no refresh button anywhere.
 
-![status](https://img.shields.io/badge/status-MVP-success)
-![tech](https://img.shields.io/badge/stack-Node%20%7C%20React%20%7C%20Postgres%20%7C%20Redis-blueviolet)
-![license](https://img.shields.io/badge/license-MIT-blue)
+[![stack](https://img.shields.io/badge/stack-TypeScript%20%7C%20React%20%7C%20Fastify%20%7C%20Postgres%20%7C%20Redis-7262fb)](https://github.com/s4natk/tandem)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
----
+<p align="center">
+  <img src="docs/images/landing.png" alt="Tandem landing page" width="920" />
+</p>
 
-## Demo at a glance
+<p align="center">
+  <img src="docs/images/live-preview.png" alt="Live collaborative board preview" width="920" />
+</p>
 
-- **Sign up → workspace → room** with a 6–8 character shareable join code.
-- **Drag-and-drop kanban** with optimistic local updates and authoritative
-  server reconciliation. Card moves are versioned (OCC) — stale moves are
-  rejected with a `VERSION_CONFLICT` and the client auto-resyncs.
-- **Live presence**: avatar bar shows who is in the room; per-card "watcher
-  rings" show who is viewing each card.
-- **Activity feed** records every column/card change in real time.
-- **Refresh-safe**: room state is persisted in Postgres; reconnecting picks
-  up the latest snapshot and replays presence.
-- **Scales horizontally**: Socket.IO uses the Redis adapter so multiple
-  backend instances broadcast as one.
-- **AWS-ready**: Dockerfiles for both apps, environment-driven config, and a
-  step-by-step ECS/RDS/ElastiCache deployment guide in
-  [`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md).
+## Features
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design and
-[`docs/SHIP.md`](docs/SHIP.md) to publish the demo on Fly.io and Vercel.
-
----
+- **Workspaces and rooms** — create a workspace, open a board, and share a short join code.
+- **Realtime Kanban** — drag cards and columns with optimistic local updates and authoritative server reconciliation.
+- **Conflict-safe edits** — every card move is versioned. Stale writes are rejected and the client resyncs instead of overwriting someone else's work.
+- **Live presence** — an avatar bar shows who is in the room; watcher rings show who is looking at each card.
+- **Activity feed** — every create, move, and delete streams into a shared sidebar.
+- **Reconnect-safe** — board state lives in Postgres. A reconnecting client receives a full snapshot and current presence.
+- **Horizontal scale** — Socket.IO uses the Redis adapter so multiple API instances broadcast as one room.
+- **Optional attachments** — S3 presigned uploads when AWS credentials are present; the rest of the app runs without them.
 
 ## Tech stack
 
-| Layer            | Choice                                                       |
-| ---------------- | ------------------------------------------------------------ |
-| Frontend         | React 18, TypeScript, Vite, Tailwind, Zustand, React Query   |
-| Drag and drop    | `@dnd-kit/core` + `@dnd-kit/sortable`                        |
-| Realtime         | Socket.IO (websocket transport)                              |
-| Backend          | Node 20, TypeScript, Fastify 5, Pino, Zod                    |
-| Auth             | JWT (HS256) access + rotated refresh tokens, argon2id        |
-| Database         | PostgreSQL 16 via Prisma 5                                   |
-| Cache / pubsub   | Redis 7 (presence, rate limits, socket.io adapter)           |
-| Object storage   | AWS S3 via presigned URLs (optional; gracefully disabled)    |
-| Tests            | Vitest                                                       |
-| Containerization | Docker + multi-stage Dockerfiles + docker-compose            |
-| Cloud target     | AWS ECS Fargate / RDS / ElastiCache / S3 / CloudFront        |
+| Layer            | Choice                                                     |
+| ---------------- | ---------------------------------------------------------- |
+| Frontend         | React 18, TypeScript, Vite, Tailwind, Zustand, TanStack Query, Framer Motion |
+| Drag and drop    | `@dnd-kit/core` + `@dnd-kit/sortable`                      |
+| Realtime         | Socket.IO with `@socket.io/redis-adapter`                  |
+| Backend          | Node 20, Fastify 5, Pino, Zod                              |
+| Auth             | Argon2id passwords, rotating JWT access + refresh tokens   |
+| Database         | PostgreSQL 16 via Prisma 5                                 |
+| Cache / pub-sub  | Redis 7 (presence, rate limits, Socket.IO fan-out)         |
+| Object storage   | AWS S3 via presigned URLs (optional)                       |
+| Tests            | Vitest                                                     |
+| Deploy           | Docker, Fly.io, Vercel, and an AWS ECS/RDS/ElastiCache path |
 
----
+Shared Zod schemas and the Socket.IO event contract live in `@collab/shared` so the client and server stay in lockstep.
+
+## Architecture
+
+```
+browser (React SPA)
+        │  https / wss
+        ▼
+   Fastify + Socket.IO
+        │
+        ├── Prisma ──► PostgreSQL
+        └── ioredis ──► Redis  (presence, rate limits, adapter)
+```
+
+Domain logic sits in transport-agnostic services. REST routes and websocket handlers call the same board, room, and membership code. The server re-validates permissions, payloads, and version numbers on every mutation.
+
+- Design notes: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Event contract: [`docs/WS_EVENTS.md`](docs/WS_EVENTS.md)
+- AWS production path: [`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md)
 
 ## Repository layout
 
 ```
-realtime-collab-app/
+tandem/
 ├── apps/
-│   ├── server/                 # Fastify API + Socket.IO gateway
-│   │   ├── src/
-│   │   │   ├── config/         # env parsing + logger
-│   │   │   ├── db/             # Prisma client singleton
-│   │   │   ├── redis/          # ioredis pub/sub/app connections
-│   │   │   ├── errors/         # AppError hierarchy
-│   │   │   ├── middleware/     # auth pre-handler, error formatter
-│   │   │   ├── plugins/        # cors, helmet, rate-limit, sensible
-│   │   │   ├── modules/
-│   │   │   │   ├── auth/       # signup/login/refresh + JWT + argon2id
-│   │   │   │   ├── workspaces/
-│   │   │   │   ├── rooms/      # CRUD + join-by-code
-│   │   │   │   ├── board/      # columns/cards + OCC + sparse positions
-│   │   │   │   ├── activity/   # append-only feed
-│   │   │   │   └── attachments/# S3 presigned URLs (optional)
-│   │   │   ├── ws/             # gateway, presence store, types
-│   │   │   ├── utils/          # avatar color, room code, position math
-│   │   │   ├── server.ts       # buildServer() factory
-│   │   │   └── main.ts         # entry + graceful shutdown
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma
-│   │   │   └── seed.ts
-│   │   └── test/               # vitest
-│   └── web/                    # React + Vite frontend
-│       ├── src/
-│       │   ├── api/            # typed fetch client + endpoint helpers
-│       │   ├── auth/           # bootstrap + RequireAuth route guard
-│       │   ├── components/
-│       │   │   ├── board/      # Column / Card / ActivityFeed / PresenceBar
-│       │   │   ├── ui/         # Avatar / Modal / Spinner primitives
-│       │   │   └── AppShell.tsx
-│       │   ├── pages/          # Login, Signup, Home, Workspace, Board, Join, New
-│       │   ├── realtime/       # socket singleton + room connection hook
-│       │   ├── store/          # zustand: auth + board state
-│       │   ├── lib/            # cn + env
-│       │   └── styles/         # tailwind base
-│       ├── public/favicon.svg
-│       ├── nginx.conf
-│       └── Dockerfile
+│   ├── server/          Fastify API + Socket.IO gateway
+│   └── web/             React + Vite frontend
 ├── packages/
-│   └── shared/                 # zod schemas, types, Socket.IO event contract
+│   └── shared/          Zod schemas, types, Socket.IO events
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── AWS_DEPLOYMENT.md
-│   └── WS_EVENTS.md
-├── docker-compose.yml
-└── package.json                # npm workspaces
+│   ├── WS_EVENTS.md
+│   └── images/
+├── docker-compose.yml   local Postgres + Redis
+└── package.json         npm workspaces
 ```
 
----
+## Getting started
 
-## Quick start (local development)
-
-### Prerequisites
-
-- **Node.js** 20+
-- **Docker Desktop** (for Postgres + Redis)
-- **npm** 10+ (Yarn / pnpm work, but the scripts here assume npm)
-
-### 1. Install dependencies
+**Needs:** Node.js 20.6+, npm 10+, and Docker Desktop.
 
 ```bash
+git clone https://github.com/s4natk/tandem.git
+cd tandem
 npm install
 ```
 
-### 2. Start Postgres + Redis
+Start Postgres and Redis:
 
 ```bash
 npm run docker:up
 ```
 
-This starts `collab-postgres` and `collab-redis` on `localhost:5432` and
-`localhost:6379` respectively. Data is persisted in named volumes.
-
-### 3. Configure environment
+Copy the environment templates (defaults match docker-compose):
 
 ```bash
 cp .env.example apps/server/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-The defaults match the docker-compose services so no edits are required.
-
-### 4. Run the database migration + seed
+Apply the schema and, if you want a starter workspace, seed a local user. The seed script refuses to run when `NODE_ENV=production` and requires a password you choose:
 
 ```bash
-npm run prisma:deploy -w @collab/server
-npm run prisma:seed -w @collab/server
+npm run prisma:deploy
+SEED_PASSWORD=choose-a-password npm run prisma:seed
 ```
 
-If this database was created earlier with `prisma migrate dev` and has no
-migration history, mark the committed migration as already applied instead
-of running it again:
-
-```bash
-npx prisma migrate resolve --applied 20261014033000_init --schema apps/server/prisma/schema.prisma
-```
-
-The seed creates `demo@collab.dev` / `demo-password` with one workspace,
-one room (code `demo1234`), and a starter set of cards.
-
-### 5. Start both apps
+Start both apps:
 
 ```bash
 npm run dev
 ```
 
-This runs `@collab/server` (port 4000) and `@collab/web` (port 5173)
-concurrently with hot reload. Open <http://localhost:5173>.
+The API listens on [http://localhost:4000](http://localhost:4000) and the web app on [http://localhost:5173](http://localhost:5173).
 
-### 6. Try the realtime experience
+Open two browsers (one incognito). Create two accounts, share a room code, and drag a card — both sides update live.
 
-Open two browser windows side by side (use an incognito window for the
-second user). Sign in as the demo user in one and create a fresh account
-in the other. Have user A join room `demo1234` and share the code with
-user B. Drag a card — both sides update live; the activity feed and
-presence avatars stay in sync.
-
----
-
-## Useful scripts
+If this database was created earlier with `prisma migrate dev` and has no migration history, mark the committed migration as applied instead of running it again:
 
 ```bash
-# Top-level
-npm run dev           # run server + web concurrently
-npm run build         # build shared, server, web
-npm run test          # vitest (server)
-npm run docker:up     # start postgres + redis
-npm run docker:down   # stop them
-
-# Server-scoped
-npm run dev -w @collab/server
-npm run test -w @collab/server
-npm run prisma:studio -w @collab/server   # GUI DB browser
-
-# Web-scoped
-npm run dev -w @collab/web
-npm run build -w @collab/web
+npx prisma migrate resolve --applied 20261014033000_init --schema apps/server/prisma/schema.prisma
 ```
 
----
+## Scripts
 
-## How the realtime layer works (in one paragraph)
+```bash
+npm run dev              # server + web with hot reload
+npm run build            # shared, server, web
+npm run test             # Vitest (server)
+npm run lint             # typecheck both apps
+npm run docker:up        # Postgres + Redis
+npm run docker:down
+npm run prisma:deploy    # apply migrations
+npm run prisma:seed      # local starter user (needs SEED_PASSWORD)
+npm run prisma:studio    # Prisma GUI
+```
 
-The client authenticates the Socket.IO handshake with the same JWT
-access token it uses for REST. After joining a room, the server emits a
-single `room:snapshot` event containing the full board, the presence
-list, and recent activity. Every subsequent mutation (column/card
-create/update/move/delete) is a Socket.IO event with an ack — the server
-applies the change in a Postgres transaction (bumping the per-card
-`version` and the per-room `revision`), then broadcasts the result to
-every other socket in the room via the Redis adapter. Optimistic locking
-on `version` is the primary conflict-resolution mechanism: a stale move
-is rejected with `VERSION_CONFLICT` and the server returns the current
-card so the client can reconcile without a full refetch. Presence is
-stored in Redis hashes keyed by `socketId` so it survives across
-multiple backend instances.
+## Environment
 
-Read [`docs/WS_EVENTS.md`](docs/WS_EVENTS.md) for the full event
-contract and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the
-design rationale.
+| Variable | Where | Purpose |
+| -------- | ----- | ------- |
+| `DATABASE_URL` | server | PostgreSQL connection string |
+| `REDIS_URL` | server | Redis connection string (`rediss://` for TLS) |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | server | Signing keys (32+ characters) |
+| `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL` | server | Token lifetimes (`15m` / `30d` by default) |
+| `CORS_ORIGIN` | server | Allowed web origin |
+| `SOCKET_IO_REDIS_ADAPTER` | server | Multi-instance websocket fan-out |
+| `SEED_EMAIL` / `SEED_PASSWORD` | server | Local seed user only |
+| `AWS_REGION` / `S3_BUCKET` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | server | Optional attachments |
+| `VITE_API_URL` / `VITE_WS_URL` | web | API and websocket endpoints |
 
----
+See [`.env.example`](.env.example) and [`apps/server/.env.example`](apps/server/.env.example).
 
-## What's implemented
+## How realtime works
 
-### Backend
+The client authenticates the Socket.IO handshake with the same JWT it uses for REST. After joining a room, the server emits one `room:snapshot` with the board, presence list, and recent activity. Every later mutation is an acknowledged event: the server applies it in a Postgres transaction (bumping the card `version` and room `revision`), then broadcasts through the Redis adapter.
 
-- [x] Fastify 5 server with Pino logging, structured error handling, Helmet, CORS, and Redis-backed rate limiting
-- [x] Argon2id password hashing (OWASP 2024 parameters)
-- [x] JWT access + refresh tokens, refresh-token rotation, hashed refresh tokens persisted in DB
-- [x] Zod validation on every request body
-- [x] Prisma schema for users, refresh tokens, workspaces, members, rooms, columns, cards, activity, attachments
-- [x] Workspace + room CRUD with role-based membership (`OWNER` / `EDITOR` / `VIEWER`)
-- [x] Join-by-code with auto-elevation to workspace member
-- [x] Socket.IO gateway with JWT handshake auth, room-scoped events, and ack-based conflict surfacing
-- [x] Optimistic concurrency on card updates and moves (`version` token)
-- [x] Sparse position ("fractional indexing-lite") for cards + columns so drag inserts touch one row
-- [x] Activity feed (append-only) broadcast on every mutation
-- [x] Presence store in Redis with multi-instance fan-out via Socket.IO Redis adapter
-- [x] S3 presigned upload/download endpoints (gracefully disabled when AWS creds absent)
-- [x] Health + readiness endpoints (`/health`, `/ready`)
-- [x] Graceful shutdown (SIGINT/SIGTERM): close IO, Fastify, Prisma, Redis
-- [x] Vitest suite for password hashing, JWT signing, schema validation, position math, room codes, and the version-conflict path of `moveCard`
+Optimistic locking on `version` is the conflict path. A stale move returns `VERSION_CONFLICT` plus the current card so the client can reconcile without a full refetch. Presence lives in Redis hashes keyed by `socketId`, so it survives across API instances.
 
-### Frontend
+## Deployment
 
-- [x] Vite + React + TypeScript + Tailwind with custom design tokens
-- [x] Zustand auth store with localStorage persistence and single-flight refresh on 401
-- [x] Zustand board store with normalized columns/cards and computed `cardsByColumn` index
-- [x] React Router 6 with `RequireAuth` guard, app shell, and per-feature pages
-- [x] Login / Signup with form validation, friendly error toasts, redirect-after-login
-- [x] Workspace dashboard + create-workspace modal
-- [x] Room dashboard + create-room modal + join-by-code page
-- [x] Realtime board view: drag-and-drop columns/cards with `@dnd-kit`, drag overlay, sortable contexts
-- [x] Card detail modal with edit + delete + version-aware save
-- [x] Live presence bar with avatar stacking
-- [x] Per-card "watcher ring" showing who is viewing each card
-- [x] Streaming activity feed sidebar with auto-scroll and color-coded events
-- [x] Toast notifications via `react-hot-toast`, conflict reconciliation messages
+The API is a multi-stage Docker image (`apps/server/Dockerfile`). The frontend is a Vite build served as a static SPA.
 
-### Infrastructure
+- **Fly.io + Vercel** — `fly.toml` and `vercel.json` are in the repo. Point `CORS_ORIGIN`, `VITE_API_URL`, and `VITE_WS_URL` at each other, use TLS Redis (`rediss://`) in production, and store secrets with the host (never in git).
+- **AWS** — ECS Fargate, RDS PostgreSQL, ElastiCache Redis, S3, and CloudFront. Step-by-step in [`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md).
+- **Local containers** — `docker compose up --profile app` builds the same shape as production.
 
-- [x] `docker-compose.yml` for Postgres + Redis (with profile-gated app services)
-- [x] Multi-stage Dockerfile for the server (Prisma generate, prod-only deps)
-- [x] Multi-stage Dockerfile for the web (Vite build + nginx serve + SPA fallback)
-- [x] Strict environment validation (`zod`) that fails fast on missing config
-- [x] `.env.example` files at root, server, and web
-- [x] AWS deployment runbook ([`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md))
-- [x] Checked-in Prisma migration
-- [x] Fly.io and Vercel config for the public demo ([`docs/SHIP.md`](docs/SHIP.md))
-
----
-
-## What's intentionally left as polish
-
-These are scoped-out for the MVP but the architecture already supports them:
-
-- **Cursor-level real-time editing** of card descriptions (CRDT or OT). The
-  event contract already exposes `typing` and `active card` indicators; a
-  Yjs document attached to the card would slot in cleanly.
-- **Pagination + server-side filtering** for the activity feed.
-- **Invitation links with expiry** and email delivery (SES).
-- **Soft delete + restore** for cards.
-- **Email verification + password reset** (skeleton tables would be a 30
-  line change).
-- **Observability**: OpenTelemetry traces on REST + WS handlers, dashboards.
-- **End-to-end tests** with Playwright.
-
-These are listed not as gaps but as the natural extension surface; the
-codebase is structured so each can be added without touching the others.
-
----
+Health checks: `GET /health` and `GET /ready`.
 
 ## License
 
-MIT
+[MIT](LICENSE)

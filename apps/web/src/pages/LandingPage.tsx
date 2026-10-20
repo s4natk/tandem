@@ -100,19 +100,6 @@ function LandingContent(): JSX.Element {
               )}
             </motion.div>
 
-            {!authed && (
-              <motion.p variants={heroItem} className="mt-4 text-sm text-white/45">
-                Just looking?{" "}
-                <Link
-                  to="/login?demo=1"
-                  className="font-semibold text-brand-200 underline decoration-brand-300/40 underline-offset-4 transition hover:text-white"
-                >
-                  Try the demo account
-                </Link>
-                , no sign-up needed.
-              </motion.p>
-            )}
-
             <motion.ul variants={heroItem} className="mt-8 flex flex-wrap justify-center gap-2.5">
               {CHIPS.map((chip) => (
                 <li

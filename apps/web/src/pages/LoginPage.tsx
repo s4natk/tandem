@@ -1,14 +1,11 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { authApi } from "@/api/endpoints";
 import { ApiClientError } from "@/api/client";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuthStore } from "@/store/auth";
-
-const DEMO_EMAIL = "demo@collab.dev";
-const DEMO_PASSWORD = "demo-password";
 
 export function LoginPage(): JSX.Element {
   const [email, setEmail] = useState("");
@@ -17,17 +14,7 @@ export function LoginPage(): JSX.Element {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
   const location = useLocation();
-  const [params] = useSearchParams();
   const redirectTo = (location.state as { from?: string } | null)?.from ?? "/app";
-
-  const fillDemo = (): void => {
-    setEmail(DEMO_EMAIL);
-    setPassword(DEMO_PASSWORD);
-  };
-
-  useEffect(() => {
-    if (params.get("demo") === "1") fillDemo();
-  }, [params]);
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -82,18 +69,6 @@ export function LoginPage(): JSX.Element {
         </button>
       </form>
 
-      <div className="my-6 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/30">
-        <span className="h-px flex-1 bg-white/10" />
-        or
-        <span className="h-px flex-1 bg-white/10" />
-      </div>
-
-      <button type="button" className="btn-outline-dark w-full py-3" onClick={fillDemo}>
-        Use the demo account
-      </button>
-      <p className="mt-3 text-center text-xs text-white/40">
-        {DEMO_EMAIL} · {DEMO_PASSWORD} · room code demo1234
-      </p>
       <p className="mt-7 text-center text-sm text-white/55">
         Need an account?{" "}
         <Link to="/signup" className="font-semibold text-brand-200 hover:text-white">

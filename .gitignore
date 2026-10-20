@@ -42,3 +42,12 @@ coverage/
 *.pid
 *.seed
 *.local
+
+# Hosting CLI state
+.vercel/
+.fly/
+
+# Personal notes that stay on this machine
+notes/
+*.private.md
+docs/SHIP.md

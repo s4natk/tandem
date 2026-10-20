@@ -1,7 +1,7 @@
 # AWS Deployment Runbook
 
 This document is a practical, opinionated walkthrough for deploying
-realtime-collab-app to AWS. It assumes the AWS CLI is configured and
+Tandem to AWS. It assumes the AWS CLI is configured and
 that you can use a managed VPC (the default VPC works for a demo).
 
 > The application is **AWS-agnostic** by design — every integration is
@@ -19,7 +19,7 @@ that you can use a managed VPC (the default VPC works for a demo).
                      ▼
             ┌──────────────────┐
             │       S3         │
-            │  collab-web-prod │
+            │  tandem-web-prod │
             └──────────────────┘
 
             ┌──────────────────┐
@@ -29,31 +29,31 @@ that you can use a managed VPC (the default VPC works for a demo).
                      ▼
             ┌──────────────────┐         ┌─────────────────────┐
             │ ECS Fargate svc  │────────►│  RDS PostgreSQL 16  │
-            │ (collab-server,  │         └─────────────────────┘
+            │ (tandem-server,  │         └─────────────────────┘
             │  ≥2 tasks)       │
             └────────┬─────────┘         ┌─────────────────────┐
                      └────────────────► │ ElastiCache Redis 7  │
                                         └─────────────────────┘
 
-            (optional) collab-attachments S3 bucket
+            (optional) tandem-attachments S3 bucket
 ```
 
 ## 2. Build & push the server image
 
 ```bash
-aws ecr create-repository --repository-name collab-server
+aws ecr create-repository --repository-name tandem-server
 
 # Build (from repo root) and tag for ECR
-docker build -f apps/server/Dockerfile -t collab-server:latest .
+docker build -f apps/server/Dockerfile -t tandem-server:latest .
 
 REGION=us-east-1
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-REPO=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/collab-server
+REPO=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/tandem-server
 
 aws ecr get-login-password --region $REGION \
   | docker login --username AWS --password-stdin $REPO
 
-docker tag collab-server:latest $REPO:latest
+docker tag tandem-server:latest $REPO:latest
 docker push $REPO:latest
 ```
 
@@ -64,12 +64,12 @@ Capture the endpoint, port, user, password, and DB name.
 
 ```bash
 aws rds create-db-instance \
-  --db-instance-identifier collab-prod \
+  --db-instance-identifier tandem-prod \
   --engine postgres --engine-version 16.4 \
   --db-instance-class db.t4g.micro \
   --allocated-storage 20 --storage-type gp3 \
-  --master-username collab --master-user-password '<<gen>>' \
-  --db-name collab \
+  --master-username tandem --master-user-password '<<gen>>' \
+  --db-name tandem \
   --vpc-security-group-ids <sg-rds> \
   --publicly-accessible false
 ```
@@ -78,7 +78,7 @@ After it's available, run migrations against it from a CI job or
 bastion host:
 
 ```bash
-DATABASE_URL='postgresql://collab:...@<endpoint>:5432/collab?schema=public' \
+DATABASE_URL='postgresql://tandem:...@<endpoint>:5432/tandem?schema=public' \
   npm run prisma:deploy -w @collab/server
 ```
 
@@ -86,7 +86,7 @@ DATABASE_URL='postgresql://collab:...@<endpoint>:5432/collab?schema=public' \
 
 ```bash
 aws elasticache create-cache-cluster \
-  --cache-cluster-id collab-prod \
+  --cache-cluster-id tandem-prod \
   --engine redis --engine-version 7.1 \
   --cache-node-type cache.t4g.micro \
   --num-cache-nodes 1 \
@@ -98,18 +98,18 @@ Take note of the primary endpoint; the server reads `REDIS_URL`.
 ## 5. S3 (optional)
 
 ```bash
-aws s3api create-bucket --bucket collab-attachments-prod --region us-east-1
+aws s3api create-bucket --bucket tandem-attachments-prod --region us-east-1
 aws s3api put-public-access-block \
-  --bucket collab-attachments-prod \
+  --bucket tandem-attachments-prod \
   --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
 
 # Lifecycle: expire orphan uploads after 7 days.
-aws s3api put-bucket-lifecycle-configuration --bucket collab-attachments-prod \
+aws s3api put-bucket-lifecycle-configuration --bucket tandem-attachments-prod \
   --lifecycle-configuration file://s3-lifecycle.json
 ```
 
 Create an IAM user/role with `s3:PutObject`, `s3:GetObject`, and
-`s3:DeleteObject` scoped to `arn:aws:s3:::collab-attachments-prod/*`.
+`s3:DeleteObject` scoped to `arn:aws:s3:::tandem-attachments-prod/*`.
 Pass its credentials to the ECS task via Secrets Manager.
 
 ## 6. ECS Fargate task
@@ -119,17 +119,17 @@ CloudWatch Logs and Secrets Manager read perms:
 
 ```jsonc
 {
-  "family": "collab-server",
+  "family": "tandem-server",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
   "executionRoleArn": "arn:aws:iam::ACCOUNT:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::ACCOUNT:role/collab-server-task",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT:role/tandem-server-task",
   "containerDefinitions": [
     {
       "name": "server",
-      "image": "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/collab-server:latest",
+      "image": "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/tandem-server:latest",
       "portMappings": [{ "containerPort": 4000, "protocol": "tcp" }],
       "essential": true,
       "environment": [
@@ -138,18 +138,18 @@ CloudWatch Logs and Secrets Manager read perms:
         { "name": "SOCKET_IO_REDIS_ADAPTER", "value": "true" },
         { "name": "CORS_ORIGIN", "value": "https://app.example.com" },
         { "name": "AWS_REGION", "value": "us-east-1" },
-        { "name": "S3_BUCKET", "value": "collab-attachments-prod" }
+        { "name": "S3_BUCKET", "value": "tandem-attachments-prod" }
       ],
       "secrets": [
-        { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:...:collab/DATABASE_URL" },
-        { "name": "REDIS_URL",    "valueFrom": "arn:aws:secretsmanager:...:collab/REDIS_URL" },
-        { "name": "JWT_ACCESS_SECRET",  "valueFrom": "arn:aws:secretsmanager:...:collab/JWT_ACCESS_SECRET" },
-        { "name": "JWT_REFRESH_SECRET", "valueFrom": "arn:aws:secretsmanager:...:collab/JWT_REFRESH_SECRET" }
+        { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:...:tandem/DATABASE_URL" },
+        { "name": "REDIS_URL",    "valueFrom": "arn:aws:secretsmanager:...:tandem/REDIS_URL" },
+        { "name": "JWT_ACCESS_SECRET",  "valueFrom": "arn:aws:secretsmanager:...:tandem/JWT_ACCESS_SECRET" },
+        { "name": "JWT_REFRESH_SECRET", "valueFrom": "arn:aws:secretsmanager:...:tandem/JWT_REFRESH_SECRET" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/collab-server",
+          "awslogs-group": "/ecs/tandem-server",
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "server"
         }
@@ -171,9 +171,9 @@ Register it and create the service:
 ```bash
 aws ecs register-task-definition --cli-input-json file://taskdef.json
 aws ecs create-service \
-  --cluster collab-prod \
-  --service-name collab-server \
-  --task-definition collab-server \
+  --cluster tandem-prod \
+  --service-name tandem-server \
+  --task-definition tandem-server \
   --desired-count 2 \
   --launch-type FARGATE \
   --network-configuration 'awsvpcConfiguration={subnets=[subnet-...],securityGroups=[sg-...],assignPublicIp=DISABLED}' \
@@ -198,7 +198,7 @@ VITE_API_URL=https://api.example.com VITE_WS_URL=wss://api.example.com \
   npm run build -w @collab/web
 
 # Upload
-aws s3 sync apps/web/dist s3://collab-web-prod --delete
+aws s3 sync apps/web/dist s3://tandem-web-prod --delete
 
 # Invalidate the CloudFront cache
 aws cloudfront create-invalidation \
@@ -249,7 +249,7 @@ Store the following in AWS Secrets Manager (or SSM Parameter Store with
 | S3 + CloudFront (light)     | ~$1–5          |
 | **Total**                   | **~$60–70**    |
 
-For a portfolio deployment, you can stop the RDS/ElastiCache instances
+For a low-traffic demo, you can stop the RDS/ElastiCache instances
 when not in use to drop the bill significantly.
 
 ## 11. CI/CD (suggested)
@@ -264,18 +264,18 @@ to add):
 - docker build -f apps/server/Dockerfile .
 - docker push to ECR
 - aws ecs update-service --force-new-deployment
-- aws s3 sync apps/web/dist s3://collab-web-prod
+- aws s3 sync apps/web/dist s3://tandem-web-prod
 - aws cloudfront create-invalidation ...
 ```
 
 ## 12. Tear-down
 
 ```bash
-aws ecs update-service --cluster collab-prod --service collab-server --desired-count 0
-aws ecs delete-service  --cluster collab-prod --service collab-server --force
-aws ecs delete-cluster  --cluster collab-prod
-aws rds delete-db-instance --db-instance-identifier collab-prod --skip-final-snapshot
-aws elasticache delete-cache-cluster --cache-cluster-id collab-prod
-aws s3 rb s3://collab-web-prod --force
-aws s3 rb s3://collab-attachments-prod --force
+aws ecs update-service --cluster tandem-prod --service tandem-server --desired-count 0
+aws ecs delete-service  --cluster tandem-prod --service tandem-server --force
+aws ecs delete-cluster  --cluster tandem-prod
+aws rds delete-db-instance --db-instance-identifier tandem-prod --skip-final-snapshot
+aws elasticache delete-cache-cluster --cache-cluster-id tandem-prod
+aws s3 rb s3://tandem-web-prod --force
+aws s3 rb s3://tandem-attachments-prod --force
 ```

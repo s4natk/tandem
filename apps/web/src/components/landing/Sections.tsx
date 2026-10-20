@@ -421,8 +421,8 @@ export function FinalCta({ authed }: { authed: boolean }): JSX.Element {
                   Create your free board
                   <ArrowRight />
                 </Link>
-                <Link to="/login?demo=1" className="btn-outline-dark">
-                  Try the demo account
+                <Link to="/login" className="btn-outline-dark">
+                  Log in
                 </Link>
               </>
             )}

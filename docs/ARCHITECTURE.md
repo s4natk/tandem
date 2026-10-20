@@ -1,6 +1,6 @@
 # Architecture
 
-This document explains the design of the realtime-collab-app: the layers,
+This document explains the design of Tandem: the layers,
 data model, real-time strategy, conflict resolution, and how local
 development maps onto an AWS production deployment.
 
